@@ -15,8 +15,13 @@
     period: "today",
     start: null,
     end: null,
-    scopeOptions: [],
+    scopeOptions: [
+      { key: "all", label: "Общие расходы" },
+      { key: "family", label: "Семейные расходы" },
+    ],
     screen: "home",
+    isLoading: false,
+    apiUnavailable: false,
   };
 
   const els = {
@@ -27,6 +32,7 @@
     periodLabel: document.getElementById("periodLabel"),
     openDatePanelBtn: document.getElementById("openDatePanelBtn"),
     periodBadgeBtn: document.getElementById("periodBadgeBtn"),
+    statusBanner: document.getElementById("statusBanner"),
     dateSheet: document.getElementById("dateSheet"),
     closeDateSheetBtn: document.getElementById("closeDateSheetBtn"),
     applyCustomPeriodBtn: document.getElementById("applyCustomPeriodBtn"),
@@ -83,6 +89,41 @@
   }
 
   const apiCandidates = buildApiCandidates();
+  const periodLabels = {
+    today: "Сегодня",
+    week: "Неделя",
+    month: "Месяц",
+    year: "Год",
+    custom: "Период",
+  };
+
+  function formatDateLabel(value) {
+    if (!value) return "";
+    const dt = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleDateString("ru-RU");
+  }
+
+  function updatePeriodLabel() {
+    if (state.period === "custom" && state.start && state.end) {
+      els.periodLabel.textContent = `${formatDateLabel(state.start)} - ${formatDateLabel(state.end)}`;
+      return;
+    }
+    els.periodLabel.textContent = periodLabels[state.period] || "Сегодня";
+  }
+
+  function setStatusBanner(text, kind) {
+    if (!text) {
+      els.statusBanner.classList.add("hidden");
+      els.statusBanner.classList.remove("error", "info");
+      els.statusBanner.textContent = "";
+      return;
+    }
+    els.statusBanner.textContent = text;
+    els.statusBanner.classList.remove("hidden");
+    els.statusBanner.classList.toggle("error", kind === "error");
+    els.statusBanner.classList.toggle("info", kind !== "error");
+  }
 
   function fmtMoney(amount, signed) {
     const absVal = Math.abs(Number(amount || 0));
@@ -177,13 +218,22 @@
   function renderScopeMenu() {
     const selected = state.scope;
     els.scopeMenu.innerHTML = "";
-    state.scopeOptions.forEach((item) => {
+    const options = Array.isArray(state.scopeOptions) ? state.scopeOptions : [];
+    if (options.length === 0) {
+      const row = document.createElement("div");
+      row.className = "scope-empty";
+      row.textContent = "Нет вариантов";
+      els.scopeMenu.appendChild(row);
+      return;
+    }
+    options.forEach((item) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "scope-option" + (item.key === selected ? " active" : "");
       btn.textContent = item.label;
       btn.addEventListener("click", () => {
         state.scope = item.key;
+        els.scopeLabel.textContent = item.label;
         closeScopeMenu();
         if (state.screen === "transactions") {
           loadTransactions();
@@ -207,6 +257,9 @@
   function openDateSheet() {
     els.customStartDate.value = state.start || "";
     els.customEndDate.value = state.end || "";
+    document.querySelectorAll(".quick-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.period === state.period);
+    });
     els.dateSheet.classList.remove("hidden");
   }
 
@@ -280,23 +333,30 @@
   }
 
   function renderOverview(payload) {
-    const selectedScope = payload.scope.selected;
-    const scopeItem = payload.scope.options.find((x) => x.key === selectedScope);
+    const scopeObj = payload && payload.scope ? payload.scope : { selected: state.scope, options: state.scopeOptions };
+    const selectedScope = scopeObj.selected || state.scope || "all";
+    const scopeOptions = Array.isArray(scopeObj.options) && scopeObj.options.length
+      ? scopeObj.options
+      : state.scopeOptions;
+    const scopeItem = scopeOptions.find((x) => x.key === selectedScope);
     state.scope = selectedScope;
-    state.scopeOptions = payload.scope.options;
+    state.scopeOptions = scopeOptions;
     els.scopeLabel.textContent = scopeItem ? scopeItem.label : "Общие расходы";
 
-    state.period = payload.period.mode;
-    state.start = payload.period.start;
-    state.end = payload.period.end;
-    els.periodLabel.textContent = payload.period.label;
+    const periodObj = payload && payload.period ? payload.period : {};
+    state.period = periodObj.mode || state.period;
+    state.start = periodObj.start || state.start;
+    state.end = periodObj.end || state.end;
+    updatePeriodLabel();
 
-    els.incomeValue.textContent = fmtMoney(payload.summary.income || 0, false);
-    els.expenseValue.textContent = fmtMoney(payload.summary.expense || 0, false);
-    els.balanceValue.textContent = fmtMoney(payload.summary.balance || 0, true);
+    const summary = payload && payload.summary ? payload.summary : {};
+    els.incomeValue.textContent = fmtMoney(summary.income || 0, false);
+    els.expenseValue.textContent = fmtMoney(summary.expense || 0, false);
+    els.balanceValue.textContent = fmtMoney(summary.balance || 0, true);
 
     renderChart(payload.chart || { items: [], total_expense: 0 });
     renderRecent(payload.recent_expenses || []);
+    setStatusBanner("", "info");
   }
 
   function renderTransactions(items) {
@@ -328,35 +388,59 @@
 
   async function loadOverview() {
     if (!state.chatId) {
-      els.recentList.innerHTML = '<div class="empty">Не передан chat_id для mini-app.</div>';
+      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
+      els.recentList.innerHTML = '<div class="empty">Нет данных по текущему чату.</div>';
       return;
     }
+    state.isLoading = true;
     try {
       const payload = await fetchJsonWithFallback("overview");
+      state.apiUnavailable = false;
       renderOverview(payload);
-    } catch (_err) {
+    } catch (err) {
+      state.apiUnavailable = true;
+      setStatusBanner(
+        "Не удалось загрузить данные. Проверьте API mini-app (домен /api).",
+        "error"
+      );
       els.recentList.innerHTML = '<div class="empty">Ошибка загрузки отчёта.</div>';
+      console.error("overview fetch failed", err);
       return;
+    } finally {
+      state.isLoading = false;
     }
   }
 
   async function loadTransactions() {
     if (!state.chatId) {
-      els.transactionsList.innerHTML = '<div class="empty">Не передан chat_id для mini-app.</div>';
+      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
+      els.transactionsList.innerHTML = '<div class="empty">Нет данных по текущему чату.</div>';
       return;
     }
+    state.isLoading = true;
     try {
       const payload = await fetchJsonWithFallback("transactions");
+      state.apiUnavailable = false;
       renderTransactions(payload.items || []);
-    } catch (_err) {
+      setStatusBanner("", "info");
+    } catch (err) {
+      state.apiUnavailable = true;
+      setStatusBanner(
+        "Не удалось загрузить транзакции. Проверьте API mini-app (домен /api).",
+        "error"
+      );
       els.transactionsList.innerHTML = '<div class="empty">Ошибка загрузки транзакций.</div>';
+      console.error("transactions fetch failed", err);
       return;
+    } finally {
+      state.isLoading = false;
     }
   }
 
   function bindEvents() {
     els.openScopeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (state.isLoading) return;
       if (els.scopeMenu.classList.contains("hidden")) {
         openScopeMenu();
       } else {
@@ -374,9 +458,11 @@
 
     document.querySelectorAll(".quick-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
+        if (state.isLoading) return;
         state.period = btn.dataset.period;
         state.start = null;
         state.end = null;
+        updatePeriodLabel();
         closeDateSheet();
         if (state.screen === "transactions") {
           await loadTransactions();
@@ -387,12 +473,14 @@
     });
 
     els.applyCustomPeriodBtn.addEventListener("click", async () => {
+      if (state.isLoading) return;
       const startVal = els.customStartDate.value;
       const endVal = els.customEndDate.value;
       if (!startVal || !endVal) return;
       state.period = "custom";
       state.start = startVal;
       state.end = endVal;
+      updatePeriodLabel();
       closeDateSheet();
       if (state.screen === "transactions") {
         await loadTransactions();
@@ -437,8 +525,28 @@
 
   async function init() {
     bindEvents();
+    updatePeriodLabel();
+    els.scopeLabel.textContent = "Общие расходы";
     showScreen("home");
     await loadOverview();
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.hidden) return;
+      if (state.screen === "transactions") {
+        await loadTransactions();
+      } else {
+        await loadOverview();
+      }
+    });
+
+    setInterval(async () => {
+      if (document.hidden || state.isLoading) return;
+      if (state.screen === "transactions") {
+        await loadTransactions();
+      } else {
+        await loadOverview();
+      }
+    }, 15000);
   }
 
   init();
