@@ -1,0 +1,539 @@
+:root {
+  --bg: #f3f4f8;
+  --panel: #ffffff;
+  --text: #171725;
+  --muted: #80869a;
+  --line: #e8e9f0;
+  --purple: #8f75dd;
+  --purple-soft: #eee8ff;
+  --green-soft: #e6f6ee;
+  --green: #118a5a;
+  --red-soft: #ffe9ed;
+  --red: #df3a5c;
+  --blue-soft: #eaf3ff;
+  --blue: #2e6ddf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top)) 14px calc(120px + env(safe-area-inset-bottom));
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 36px;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.icon-btn {
+  border: 0;
+  background: var(--purple-soft);
+  color: var(--purple);
+  border-radius: 20px;
+  height: 56px;
+  width: 56px;
+  font-size: 24px;
+}
+
+.scope-wrap {
+  position: relative;
+}
+
+.scope-btn {
+  border: 0;
+  background: var(--purple-soft);
+  color: var(--purple);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 22px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chev {
+  font-size: 18px;
+  opacity: 0.7;
+}
+
+.scope-menu {
+  position: absolute;
+  top: 58px;
+  right: 0;
+  z-index: 12;
+  width: 270px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 36px rgba(23, 23, 37, 0.15);
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.scope-option {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 18px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.scope-option.active {
+  background: var(--purple-soft);
+  color: var(--purple);
+  font-weight: 700;
+}
+
+.period-badge {
+  margin-top: 14px;
+  border: 1px solid #d6d9e4;
+  background: #fff;
+  color: #4f5668;
+  border-radius: 999px;
+  height: 56px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.screen {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card {
+  border-radius: 20px;
+  padding: 16px;
+  min-height: 128px;
+}
+
+.card.income {
+  background: var(--green-soft);
+  border: 1px solid #ccecd9;
+}
+
+.card.expense {
+  background: var(--red-soft);
+  border: 1px solid #ffd3dc;
+}
+
+.card.balance {
+  grid-column: 1 / -1;
+  background: var(--blue-soft);
+  border: 1px solid #d6e8ff;
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.card-value {
+  margin-top: 10px;
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 14px;
+  border: 1px solid var(--line);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 31px;
+  font-weight: 800;
+  color: #615191;
+}
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--purple);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.chart-block {
+  margin: 10px auto 0;
+  width: 320px;
+  height: 320px;
+  position: relative;
+}
+
+.donut {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(#dedeee 0deg 360deg);
+  position: relative;
+}
+
+.donut::after {
+  content: "";
+  position: absolute;
+  inset: 48px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-total {
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--red);
+}
+
+.donut-sub {
+  font-size: 26px;
+  color: #8d92a4;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.legend {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.legend-item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.tx-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.tx-item {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+}
+
+.tx-emoji {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  background: #f5e9f2;
+  font-size: 24px;
+}
+
+.tx-main {
+  min-width: 0;
+}
+
+.tx-title {
+  font-size: 28px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-amount {
+  font-size: 36px;
+  font-weight: 800;
+}
+
+.tx-amount.expense {
+  color: var(--red);
+}
+
+.tx-amount.income {
+  color: var(--green);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 24px;
+  text-align: center;
+  padding: 18px 8px;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr 84px 1fr 1fr;
+  align-items: center;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  z-index: 11;
+}
+
+.nav-btn {
+  border: 0;
+  background: transparent;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  color: #9ba1b2;
+}
+
+.nav-btn .icon {
+  font-size: 26px;
+}
+
+.nav-btn .txt {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.nav-btn.active {
+  color: var(--purple);
+}
+
+.nav-btn.center {
+  width: 74px;
+  height: 74px;
+  border-radius: 999px;
+  background: var(--purple);
+  color: #fff;
+  margin-top: -26px;
+  box-shadow: 0 10px 24px rgba(143, 117, 221, 0.35);
+}
+
+.nav-btn .plus {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 15, 26, 0.42);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 14px;
+}
+
+.sheet-card {
+  width: min(620px, 100%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+
+.sheet-card h3 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.quick-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.quick-btn {
+  border: 0;
+  background: #f1f2f7;
+  border-radius: 999px;
+  padding: 10px 6px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.range-row {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.range-row label {
+  display: grid;
+  gap: 6px;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.range-row input {
+  border: 1px solid #d4d9e4;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-size: 20px;
+}
+
+.sheet-actions {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.primary-btn,
+.ghost-btn {
+  border: 0;
+  border-radius: 999px;
+  min-height: 50px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.primary-btn {
+  background: var(--purple);
+  color: #fff;
+}
+
+.ghost-btn {
+  background: #eff0f6;
+  color: #5f6578;
+}
+
+.placeholder-panel h2 {
+  color: var(--text);
+}
+
+.placeholder-panel p {
+  margin: 8px 0 0;
+  font-size: 24px;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 540px) {
+  .topbar h1 {
+    font-size: 28px;
+  }
+
+  .period-badge {
+    font-size: 22px;
+  }
+
+  .card-title {
+    font-size: 22px;
+  }
+
+  .card-value {
+    font-size: 30px;
+  }
+
+  .panel-head h2 {
+    font-size: 24px;
+  }
+
+  .chart-block {
+    width: 260px;
+    height: 260px;
+  }
+
+  .donut::after {
+    inset: 40px;
+  }
+
+  .donut-total {
+    font-size: 38px;
+  }
+
+  .tx-title {
+    font-size: 22px;
+  }
+
+  .tx-meta {
+    font-size: 17px;
+  }
+
+  .tx-amount {
+    font-size: 28px;
+  }
+}

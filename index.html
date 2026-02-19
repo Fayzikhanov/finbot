@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Семейные финансы</title>
+    <link rel="stylesheet" href="/miniapp/static/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="topbar">
+        <button id="openDatePanelBtn" class="icon-btn" type="button" aria-label="Фильтр даты">
+          <span>📅</span>
+        </button>
+        <h1 id="screenTitle">Главная</h1>
+        <div class="scope-wrap">
+          <button id="openScopeBtn" class="scope-btn" type="button">
+            <span id="scopeLabel">Общие расходы</span>
+            <span class="chev">⌄</span>
+          </button>
+          <div id="scopeMenu" class="scope-menu hidden"></div>
+        </div>
+      </header>
+
+      <button id="periodBadgeBtn" class="period-badge" type="button">
+        <span>📅</span>
+        <span id="periodLabel">Сегодня</span>
+        <span class="chev">⌄</span>
+      </button>
+
+      <main id="homeScreen" class="screen">
+        <section class="cards-grid">
+          <article class="card income">
+            <div class="card-title">Доходы</div>
+            <div id="incomeValue" class="card-value">0 сум</div>
+          </article>
+          <article class="card expense">
+            <div class="card-title">Расходы</div>
+            <div id="expenseValue" class="card-value">0 сум</div>
+          </article>
+          <article class="card balance">
+            <div class="card-title">Баланс</div>
+            <div id="balanceValue" class="card-value">0 сум</div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Разбивка расходов</h2>
+          </div>
+          <div class="chart-block">
+            <div id="donut" class="donut"></div>
+            <div class="donut-center">
+              <div id="donutTotal" class="donut-total">0</div>
+              <div class="donut-sub">Итого</div>
+            </div>
+          </div>
+          <div id="chartLegend" class="legend"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Последние расходы</h2>
+            <button id="viewAllBtn" class="link-btn" type="button">Посмотреть все</button>
+          </div>
+          <div id="recentList" class="tx-list"></div>
+        </section>
+      </main>
+
+      <main id="transactionsScreen" class="screen hidden">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Транзакции</h2>
+          </div>
+          <div id="transactionsList" class="tx-list"></div>
+        </section>
+      </main>
+
+      <main id="placeholderScreen" class="screen hidden">
+        <section class="panel placeholder-panel">
+          <h2 id="placeholderTitle">Скоро</h2>
+          <p>Этот раздел пока пустой. Добавим следующим шагом.</p>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <button id="navHome" class="nav-btn active" type="button">
+          <span class="icon">🏠</span>
+          <span class="txt">Главная</span>
+        </button>
+        <button id="navTransactions" class="nav-btn" type="button">
+          <span class="icon">📋</span>
+          <span class="txt">Транзакции</span>
+        </button>
+        <button id="navAdd" class="nav-btn center" type="button">
+          <span class="plus">＋</span>
+        </button>
+        <button id="navConverter" class="nav-btn" type="button">
+          <span class="icon">⇄</span>
+          <span class="txt">Конвертер</span>
+        </button>
+        <button id="navProfile" class="nav-btn" type="button">
+          <span class="icon">👤</span>
+          <span class="txt">Профиль</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="dateSheet" class="sheet hidden">
+      <div class="sheet-card">
+        <h3>Диапазон дат</h3>
+        <div class="quick-row">
+          <button class="quick-btn" data-period="today" type="button">Сегодня</button>
+          <button class="quick-btn" data-period="week" type="button">Неделя</button>
+          <button class="quick-btn" data-period="month" type="button">Месяц</button>
+          <button class="quick-btn" data-period="year" type="button">Год</button>
+        </div>
+        <div class="range-row">
+          <label>
+            Начало
+            <input id="customStartDate" type="date" />
+          </label>
+          <label>
+            Конец
+            <input id="customEndDate" type="date" />
+          </label>
+        </div>
+        <div class="sheet-actions">
+          <button id="applyCustomPeriodBtn" class="primary-btn" type="button">Применить</button>
+          <button id="closeDateSheetBtn" class="ghost-btn" type="button">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/miniapp/static/app.js"></script>
+  </body>
+</html>
