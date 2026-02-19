@@ -10,40 +10,53 @@
     <div id="app" class="app">
       <header class="topbar">
         <button id="openDatePanelBtn" class="icon-btn" type="button" aria-label="Фильтр даты">
-          <span>📅</span>
+          <i data-lucide="calendar-days"></i>
         </button>
         <h1 id="screenTitle">Главная</h1>
         <div class="scope-wrap">
           <button id="openScopeBtn" class="scope-btn" type="button">
+            <i data-lucide="users"></i>
             <span id="scopeLabel">Общие расходы</span>
-            <span class="chev">⌄</span>
+            <i data-lucide="chevron-down" class="chev"></i>
           </button>
           <div id="scopeMenu" class="scope-menu hidden"></div>
         </div>
       </header>
 
       <button id="periodBadgeBtn" class="period-badge" type="button">
-        <span>📅</span>
+        <i data-lucide="calendar-range"></i>
         <span id="periodLabel">Сегодня</span>
-        <span class="chev">⌄</span>
+        <i data-lucide="chevron-down" class="chev"></i>
       </button>
 
       <div id="statusBanner" class="status-banner hidden"></div>
 
       <main id="homeScreen" class="screen">
-        <section class="cards-grid">
-          <article class="card income">
-            <div class="card-title">Доходы</div>
-            <div id="incomeValue" class="card-value">0 сум</div>
+        <section class="summary-stack">
+          <article class="card balance-main">
+            <div class="card-head">
+              <i data-lucide="wallet"></i>
+              <div class="card-title">Баланс</div>
+            </div>
+            <div id="balanceValue" class="card-value main">0 сум</div>
           </article>
-          <article class="card expense">
-            <div class="card-title">Расходы</div>
-            <div id="expenseValue" class="card-value">0 сум</div>
-          </article>
-          <article class="card balance">
-            <div class="card-title">Баланс</div>
-            <div id="balanceValue" class="card-value">0 сум</div>
-          </article>
+
+          <div class="cards-grid">
+            <article class="card metric">
+              <div class="card-head">
+                <i data-lucide="arrow-down-left"></i>
+                <div class="card-title">Доходы</div>
+              </div>
+              <div id="incomeValue" class="card-value">0 сум</div>
+            </article>
+            <article class="card metric">
+              <div class="card-head">
+                <i data-lucide="arrow-up-right"></i>
+                <div class="card-title">Расходы</div>
+              </div>
+              <div id="expenseValue" class="card-value">0 сум</div>
+            </article>
+          </div>
         </section>
 
         <section class="panel">
@@ -87,25 +100,26 @@
 
       <nav class="bottom-nav">
         <button id="navHome" class="nav-btn active" type="button">
-          <span class="icon">🏠</span>
+          <i data-lucide="house"></i>
           <span class="txt">Главная</span>
         </button>
         <button id="navTransactions" class="nav-btn" type="button">
-          <span class="icon">📋</span>
+          <i data-lucide="list"></i>
           <span class="txt">Транзакции</span>
         </button>
-        <button id="navAdd" class="nav-btn center" type="button">
-          <span class="plus">＋</span>
-        </button>
         <button id="navConverter" class="nav-btn" type="button">
-          <span class="icon">⇄</span>
+          <i data-lucide="arrow-left-right"></i>
           <span class="txt">Конвертер</span>
         </button>
         <button id="navProfile" class="nav-btn" type="button">
-          <span class="icon">👤</span>
+          <i data-lucide="user"></i>
           <span class="txt">Профиль</span>
         </button>
       </nav>
+
+      <button id="navAdd" class="fab-add" type="button" aria-label="Добавить">
+        <i data-lucide="plus"></i>
+      </button>
     </div>
 
     <div id="dateSheet" class="sheet hidden">
@@ -134,6 +148,7 @@
       </div>
     </div>
 
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="./app.js"></script>
   </body>
