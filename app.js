@@ -58,7 +58,7 @@
     navProfile: document.getElementById("navProfile"),
   };
 
-  const chartColors = ["#8f75dd", "#5f9ae6", "#f78f3b", "#36b37e", "#f15b7a", "#4bc0c8", "#c78ef0"];
+  const chartColors = ["#9d92f0", "#9db5ef", "#a7d7c7", "#eec9a4", "#e6b4be", "#cfd4e1"];
 
   function normalizeApiBase(raw) {
     const value = String(raw || "").trim();
@@ -123,6 +123,40 @@
     els.statusBanner.classList.remove("hidden");
     els.statusBanner.classList.toggle("error", kind === "error");
     els.statusBanner.classList.toggle("info", kind !== "error");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function lucideSvg(name, attrs) {
+    if (!window.lucide || !window.lucide.icons) return "";
+    const icon = window.lucide.icons[name];
+    if (!icon) return "";
+    const options = Object.assign(
+      { width: 18, height: 18, "stroke-width": 2, color: "currentColor" },
+      attrs || {}
+    );
+    return icon.toSvg(options);
+  }
+
+  function categoryIconName(label, kind) {
+    const text = String(label || "").toLowerCase();
+    if (kind === "income") return "arrow-down-left";
+    if (/(кафе|ресторан|еда|кофе|фастфуд|продукт)/i.test(text)) return "utensils-crossed";
+    if (/(транспорт|такси|метро|бензин|авто|парковка)/i.test(text)) return "car";
+    if (/(жиль|дом|аренд|ипотек|коммун|ремонт|мебел|техник)/i.test(text)) return "home";
+    if (/(здоров|аптек|врач|анализ|стомат|спорт)/i.test(text)) return "heart-pulse";
+    if (/(образован|школ|садик|курс|книг)/i.test(text)) return "graduation-cap";
+    if (/(финанс|кредит|инвест|долг|банк|сбереж)/i.test(text)) return "wallet";
+    if (/(одеж|обув|космет|уход)/i.test(text)) return "shirt";
+    if (/(развлеч|игр|кино|путеше|подпис)/i.test(text)) return "sparkles";
+    return "receipt";
   }
 
   function fmtMoney(amount, signed) {
@@ -277,13 +311,15 @@
       return;
     }
     items.forEach((item) => {
+      const title = escapeHtml(item.description || item.category_label || "Операция");
+      const label = escapeHtml(item.category_label || "Прочее");
       const tx = document.createElement("article");
       tx.className = "tx-item";
       tx.innerHTML = `
-        <div class="tx-emoji">${item.category_emoji || "📦"}</div>
+        <div class="tx-icon expense">${lucideSvg(categoryIconName(item.category_label, "expense"))}</div>
         <div class="tx-main">
-          <div class="tx-title">${item.description || item.category_label || "Операция"}</div>
-          <div class="tx-meta">${item.category_label || "Прочее"} • ${fmtDateTime(item.created_at_iso)}</div>
+          <div class="tx-title">${title}</div>
+          <div class="tx-meta">${label} • ${fmtDateTime(item.created_at_iso)}</div>
         </div>
         <div class="tx-amount expense">-${fmtMoney(item.amount, false)}</div>
       `;
@@ -321,11 +357,16 @@
 
     els.chartLegend.innerHTML = "";
     items.forEach((item, idx) => {
+      const label = escapeHtml(item.label || "Прочее");
+      const color = chartColors[idx % chartColors.length];
       const row = document.createElement("div");
       row.className = "legend-item";
       row.innerHTML = `
-        <span class="dot" style="background:${chartColors[idx % chartColors.length]}"></span>
-        <span>${item.emoji || "📦"} ${item.label || "Прочее"}</span>
+        <span class="legend-icon" style="color:${color}">${lucideSvg(
+          categoryIconName(item.label, "expense"),
+          { width: 16, height: 16 }
+        )}</span>
+        <span>${label}</span>
         <strong>${fmtMoney(item.amount, false)}</strong>
       `;
       els.chartLegend.appendChild(row);
@@ -373,12 +414,16 @@
       const tx = document.createElement("article");
       const amountCls = item.kind === "income" ? "income" : "expense";
       const sign = item.kind === "income" ? "+" : "-";
+      const title = escapeHtml(item.description || item.category_label || "Операция");
+      const label = escapeHtml(item.category_label || "Прочее");
       tx.className = "tx-item";
       tx.innerHTML = `
-        <div class="tx-emoji">${item.category_emoji || "📦"}</div>
+        <div class="tx-icon ${amountCls}">${lucideSvg(
+          categoryIconName(item.category_label, item.kind)
+        )}</div>
         <div class="tx-main">
-          <div class="tx-title">${item.description || item.category_label || "Операция"}</div>
-          <div class="tx-meta">${item.category_label || "Прочее"} • ${fmtDateTime(item.created_at_iso)}</div>
+          <div class="tx-title">${title}</div>
+          <div class="tx-meta">${label} • ${fmtDateTime(item.created_at_iso)}</div>
         </div>
         <div class="tx-amount ${amountCls}">${sign}${fmtMoney(item.amount, false)}</div>
       `;
@@ -524,6 +569,9 @@
   }
 
   async function init() {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
     bindEvents();
     updatePeriodLabel();
     els.scopeLabel.textContent = "Общие расходы";
