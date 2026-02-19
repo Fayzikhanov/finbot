@@ -52,6 +52,15 @@ body {
     calc(94px + env(safe-area-inset-bottom));
 }
 
+.app.is-add-screen .scope-wrap {
+  display: none;
+}
+
+.app.is-add-screen .period-badge,
+.app.is-add-screen .status-banner {
+  display: none;
+}
+
 .topbar {
   display: grid;
   grid-template-columns: 44px 1fr auto;
