@@ -7,6 +7,7 @@
 
   const query = new URLSearchParams(window.location.search);
   const chatId = Number(query.get("chat_id") || "0");
+  const apiBaseParam = String(query.get("api_base") || "").trim();
 
   const state = {
     chatId,
@@ -53,6 +54,36 @@
 
   const chartColors = ["#8f75dd", "#5f9ae6", "#f78f3b", "#36b37e", "#f15b7a", "#4bc0c8", "#c78ef0"];
 
+  function normalizeApiBase(raw) {
+    const value = String(raw || "").trim();
+    if (!value) return "";
+    return value.replace(/\/+$/, "");
+  }
+
+  function buildApiCandidates() {
+    const candidates = [];
+    const push = (value) => {
+      const normalized = normalizeApiBase(value);
+      if (!normalized) return;
+      if (!candidates.includes(normalized)) {
+        candidates.push(normalized);
+      }
+    };
+
+    push(apiBaseParam);
+    const pathname = (window.location.pathname || "").replace(/\/+$/, "");
+    if (pathname.startsWith("/miniapp")) {
+      push("/miniapp/api");
+      push("/api");
+    } else {
+      push("/api");
+      push("/miniapp/api");
+    }
+    return candidates;
+  }
+
+  const apiCandidates = buildApiCandidates();
+
   function fmtMoney(amount, signed) {
     const absVal = Math.abs(Number(amount || 0));
     const sign = signed ? (amount > 0 ? "+" : amount < 0 ? "-" : "") : "";
@@ -94,6 +125,26 @@
       params.set("end", state.end);
     }
     return params.toString();
+  }
+
+  async function fetchJsonWithFallback(endpoint) {
+    const suffix = endpoint.replace(/^\/+/, "");
+    const qs = getApiQuery();
+    let lastError = null;
+    for (const base of apiCandidates) {
+      const url = `${base}/${suffix}?${qs}`;
+      try {
+        const resp = await fetch(url, { cache: "no-store" });
+        if (!resp.ok) {
+          lastError = new Error(`HTTP ${resp.status}: ${url}`);
+          continue;
+        }
+        return await resp.json();
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error("api unavailable");
   }
 
   function showScreen(name) {
@@ -280,13 +331,13 @@
       els.recentList.innerHTML = '<div class="empty">Не передан chat_id для mini-app.</div>';
       return;
     }
-    const resp = await fetch(`/miniapp/api/overview?${getApiQuery()}`);
-    if (!resp.ok) {
+    try {
+      const payload = await fetchJsonWithFallback("overview");
+      renderOverview(payload);
+    } catch (_err) {
       els.recentList.innerHTML = '<div class="empty">Ошибка загрузки отчёта.</div>';
       return;
     }
-    const payload = await resp.json();
-    renderOverview(payload);
   }
 
   async function loadTransactions() {
@@ -294,13 +345,13 @@
       els.transactionsList.innerHTML = '<div class="empty">Не передан chat_id для mini-app.</div>';
       return;
     }
-    const resp = await fetch(`/miniapp/api/transactions?${getApiQuery()}`);
-    if (!resp.ok) {
+    try {
+      const payload = await fetchJsonWithFallback("transactions");
+      renderTransactions(payload.items || []);
+    } catch (_err) {
       els.transactionsList.innerHTML = '<div class="empty">Ошибка загрузки транзакций.</div>';
       return;
     }
-    const payload = await resp.json();
-    renderTransactions(payload.items || []);
   }
 
   function bindEvents() {
