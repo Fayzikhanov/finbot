@@ -15,10 +15,17 @@
     period: "today",
     start: null,
     end: null,
+    selectedAnalytics: "expense",
     scopeOptions: [
       { key: "all", label: "Общие расходы" },
       { key: "family", label: "Семейные расходы" },
     ],
+    chartItems: [],
+    chartTotal: 0,
+    activeCategoryKey: null,
+    currentTransactions: [],
+    transactionsTypeFilter: "all",
+    comparison: null,
     screen: "home",
     isLoading: false,
     apiUnavailable: false,
@@ -38,11 +45,26 @@
     applyCustomPeriodBtn: document.getElementById("applyCustomPeriodBtn"),
     customStartDate: document.getElementById("customStartDate"),
     customEndDate: document.getElementById("customEndDate"),
+    tabBalance: document.getElementById("tabBalance"),
+    tabIncome: document.getElementById("tabIncome"),
+    tabExpense: document.getElementById("tabExpense"),
     incomeValue: document.getElementById("incomeValue"),
     expenseValue: document.getElementById("expenseValue"),
     balanceValue: document.getElementById("balanceValue"),
+    analyticsPanel: document.getElementById("analyticsPanel"),
+    recentPanel: document.getElementById("recentPanel"),
+    chartSectionTitle: document.getElementById("chartSectionTitle"),
+    recentSectionTitle: document.getElementById("recentSectionTitle"),
+    balanceAnalytics: document.getElementById("balanceAnalytics"),
+    balanceMainValue: document.getElementById("balanceMainValue"),
+    balanceDelta: document.getElementById("balanceDelta"),
+    balanceTrendSvg: document.getElementById("balanceTrendSvg"),
+    balanceTrendLegend: document.getElementById("balanceTrendLegend"),
+    breakdownView: document.getElementById("breakdownView"),
     donut: document.getElementById("donut"),
     donutTotal: document.getElementById("donutTotal"),
+    donutSub: document.getElementById("donutSub"),
+    donutMeta: document.getElementById("donutMeta"),
     chartLegend: document.getElementById("chartLegend"),
     recentList: document.getElementById("recentList"),
     viewAllBtn: document.getElementById("viewAllBtn"),
@@ -58,7 +80,18 @@
     navProfile: document.getElementById("navProfile"),
   };
 
-  const chartColors = ["#9d92f0", "#9db5ef", "#a7d7c7", "#eec9a4", "#e6b4be", "#cfd4e1"];
+  const chartPalette = [
+    "#8B95D6",
+    "#71B7B2",
+    "#F0B27A",
+    "#E79BB4",
+    "#9BB8E8",
+    "#B7A0E8",
+    "#8EC5A4",
+    "#D7A9C2",
+    "#A4B2C8",
+    "#C7B28E",
+  ];
 
   function normalizeApiBase(raw) {
     const value = String(raw || "").trim();
@@ -165,15 +198,233 @@
     return `${sign}${new Intl.NumberFormat("ru-RU").format(absVal)} сум`;
   }
 
-  function fmtShortMoney(amount) {
-    const n = Number(amount || 0);
-    if (n >= 1000000) {
-      return `${Math.round((n / 1000000) * 10) / 10}M`;
+  function fmtPercent(value) {
+    const pct = Number(value || 0);
+    if (!Number.isFinite(pct) || pct <= 0) return "0";
+    if (pct < 1) return pct.toFixed(1);
+    return String(Math.round(pct));
+  }
+
+  function fmtSignedPercent(value) {
+    const pct = Number(value || 0);
+    if (!Number.isFinite(pct) || pct === 0) return "0%";
+    const abs = Math.abs(pct);
+    const rendered = abs < 1 ? abs.toFixed(1) : Math.round(abs).toString();
+    return `${pct > 0 ? "+" : "-"}${rendered}%`;
+  }
+
+  function parseDateOnly(value) {
+    if (!value) return null;
+    const dt = new Date(`${value}T00:00:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function toDateOnlyIso(dt) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function addDays(dt, days) {
+    const next = new Date(dt);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  function diffDaysInclusive(startIso, endIso) {
+    const start = parseDateOnly(startIso);
+    const end = parseDateOnly(endIso);
+    if (!start || !end) return 1;
+    const diff = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    return Math.max(1, diff);
+  }
+
+  function periodComparisonLabel(mode) {
+    if (mode === "week") return "к прошлой неделе";
+    if (mode === "month") return "к прошлому месяцу";
+    if (mode === "year") return "к прошлому году";
+    if (mode === "today") return "к вчерашнему дню";
+    return "к прошлому периоду";
+  }
+
+  function getComparisonRange(mode, startIso, endIso) {
+    const length = diffDaysInclusive(startIso, endIso);
+    const currentStart = parseDateOnly(startIso);
+    if (!currentStart) {
+      return null;
     }
-    if (n >= 1000) {
-      return `${Math.round((n / 1000) * 10) / 10}K`;
+    const prevEnd = addDays(currentStart, -1);
+    const prevStart = addDays(prevEnd, -(length - 1));
+    return {
+      start: toDateOnlyIso(prevStart),
+      end: toDateOnlyIso(prevEnd),
+      label: periodComparisonLabel(mode),
+    };
+  }
+
+  function normalizeCategoryKey(label) {
+    return String(label || "Прочее")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function stableColorByCategory(label) {
+    const key = normalizeCategoryKey(label);
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) {
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
     }
-    return String(n);
+    return chartPalette[hash % chartPalette.length];
+  }
+
+  function polarToCartesian(cx, cy, radius, angleDeg) {
+    const rad = ((angleDeg - 90) * Math.PI) / 180;
+    return {
+      x: cx + radius * Math.cos(rad),
+      y: cy + radius * Math.sin(rad),
+    };
+  }
+
+  function buildDonutPath(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
+    const startOuter = polarToCartesian(cx, cy, outerRadius, startAngle);
+    const endOuter = polarToCartesian(cx, cy, outerRadius, endAngle);
+    const startInner = polarToCartesian(cx, cy, innerRadius, endAngle);
+    const endInner = polarToCartesian(cx, cy, innerRadius, startAngle);
+    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+    return [
+      `M ${startOuter.x} ${startOuter.y}`,
+      `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${endOuter.x} ${endOuter.y}`,
+      `L ${startInner.x} ${startInner.y}`,
+      `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${endInner.x} ${endInner.y}`,
+      "Z",
+    ].join(" ");
+  }
+
+  function updateDonutCenter(activeItem) {
+    const total = Number(state.chartTotal || 0);
+    if (activeItem) {
+      els.donutTotal.textContent = fmtMoney(activeItem.amount, false);
+      els.donutSub.textContent = `${fmtPercent(activeItem.percent)}%`;
+      els.donutMeta.textContent = activeItem.label;
+      els.donutMeta.classList.remove("hidden");
+      return;
+    }
+    els.donutTotal.textContent = fmtMoney(total, false);
+    els.donutSub.textContent = "Всего за период";
+    els.donutMeta.textContent = "";
+    els.donutMeta.classList.add("hidden");
+  }
+
+  function renderDonut(items, activeKey) {
+    const size = 220;
+    const center = size / 2;
+    const outerRadius = 100;
+    const innerRadius = 70;
+
+    if (!items.length) {
+      els.donut.innerHTML = `
+        <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Разбивка расходов">
+          <circle class="donut-track" cx="${center}" cy="${center}" r="${(outerRadius + innerRadius) / 2}" />
+        </svg>
+      `;
+      return;
+    }
+
+    let angle = 0;
+    const gapAngle = items.length > 1 ? 1.4 : 0;
+    const segments = items
+      .map((item) => {
+        const sweep = state.chartTotal > 0 ? (item.amount / state.chartTotal) * 360 : 0;
+        if (sweep <= 0) {
+          return "";
+        }
+
+        const start = angle;
+        const end = angle + sweep;
+        angle = end;
+
+        const drawStart = end - start > gapAngle ? start + gapAngle / 2 : start;
+        const drawEnd = end - start > gapAngle ? end - gapAngle / 2 : end;
+        const isActive = Boolean(activeKey) && item.key === activeKey;
+        const isDim = Boolean(activeKey) && item.key !== activeKey;
+        const className = [
+          "donut-segment",
+          isActive ? "is-active" : "",
+          isDim ? "is-dim" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        if (sweep >= 359.9) {
+          return `
+            <g class="${className}" style="transform-origin:${center}px ${center}px">
+              <circle
+                cx="${center}"
+                cy="${center}"
+                r="${(outerRadius + innerRadius) / 2}"
+                fill="none"
+                stroke="${item.color}"
+                stroke-width="${outerRadius - innerRadius}"
+              />
+            </g>
+          `;
+        }
+
+        const d = buildDonutPath(center, center, outerRadius, innerRadius, drawStart, drawEnd);
+        return `
+          <g class="${className}" style="transform-origin:${center}px ${center}px">
+            <path d="${d}" fill="${item.color}"></path>
+          </g>
+        `;
+      })
+      .join("");
+
+    els.donut.innerHTML = `
+      <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Разбивка расходов">
+        <circle class="donut-track" cx="${center}" cy="${center}" r="${(outerRadius + innerRadius) / 2}" />
+        ${segments}
+      </svg>
+    `;
+  }
+
+  function renderLegend(items, activeKey) {
+    els.chartLegend.innerHTML = "";
+    if (!items.length) {
+      els.chartLegend.innerHTML = '<div class="empty">Нет данных по категориям.</div>';
+      return;
+    }
+
+    items.forEach((item) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "legend-item" + (activeKey === item.key ? " active" : "");
+      row.innerHTML = `
+        <span class="legend-left">
+          <span class="legend-marker" style="background:${item.color}"></span>
+          <span class="legend-name">${escapeHtml(item.label)}</span>
+        </span>
+        <span class="legend-right">${fmtMoney(item.amount, false)} • ${fmtPercent(item.percent)}%</span>
+      `;
+      row.addEventListener("click", () => {
+        state.activeCategoryKey = state.activeCategoryKey === item.key ? null : item.key;
+        renderInteractiveChart();
+      });
+      els.chartLegend.appendChild(row);
+    });
+  }
+
+  function renderInteractiveChart() {
+    const items = Array.isArray(state.chartItems) ? state.chartItems : [];
+    const hasActive = items.some((item) => item.key === state.activeCategoryKey);
+    if (!hasActive) {
+      state.activeCategoryKey = null;
+    }
+    const activeItem = items.find((item) => item.key === state.activeCategoryKey) || null;
+    renderDonut(items, state.activeCategoryKey);
+    renderLegend(items, state.activeCategoryKey);
+    updateDonutCenter(activeItem);
   }
 
   function fmtDateTime(iso) {
@@ -190,21 +441,32 @@
     return `${dt.toLocaleDateString("ru-RU")} ${hh}:${mm}`;
   }
 
-  function getApiQuery() {
+  function buildApiParams(overrides) {
+    const opts = Object.assign(
+      {
+        chatId: state.chatId,
+        scope: state.scope,
+        period: state.period,
+        start: state.start,
+        end: state.end,
+      },
+      overrides || {}
+    );
+
     const params = new URLSearchParams();
-    params.set("chat_id", String(state.chatId));
-    params.set("scope", state.scope);
-    params.set("period", state.period);
-    if (state.period === "custom" && state.start && state.end) {
-      params.set("start", state.start);
-      params.set("end", state.end);
+    params.set("chat_id", String(opts.chatId || 0));
+    params.set("scope", String(opts.scope || "all"));
+    params.set("period", String(opts.period || "today"));
+    if (opts.period === "custom" && opts.start && opts.end) {
+      params.set("start", String(opts.start));
+      params.set("end", String(opts.end));
     }
     return params.toString();
   }
 
-  async function fetchJsonWithFallback(endpoint) {
+  async function fetchJsonWithFallback(endpoint, overrides) {
     const suffix = endpoint.replace(/^\/+/, "");
-    const qs = getApiQuery();
+    const qs = buildApiParams(overrides);
     let lastError = null;
     for (const base of apiCandidates) {
       const url = `${base}/${suffix}?${qs}`;
@@ -301,76 +563,291 @@
     els.dateSheet.classList.add("hidden");
   }
 
-  function renderRecent(items) {
+  function parseIsoDateTime(value) {
+    const dt = new Date(value || "");
+    return Number.isNaN(dt.getTime()) ? new Date(0) : dt;
+  }
+
+  function sortTransactionsByTime(items) {
+    return [...(items || [])].sort(
+      (a, b) => parseIsoDateTime(b.created_at_iso).getTime() - parseIsoDateTime(a.created_at_iso).getTime()
+    );
+  }
+
+  function buildBreakdownByType(kind) {
+    const rows = (state.currentTransactions || []).filter((tx) => String(tx.kind || "") === kind);
+    const grouped = new Map();
+    rows.forEach((row) => {
+      const label = String(row.category_label || "Прочее").trim() || "Прочее";
+      const key = normalizeCategoryKey(label);
+      const amount = Number(row.amount || 0);
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          label,
+          amount: 0,
+          color: stableColorByCategory(label),
+        });
+      }
+      grouped.get(key).amount += amount;
+    });
+    const items = Array.from(grouped.values())
+      .filter((item) => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+    const total = items.reduce((acc, item) => acc + Number(item.amount || 0), 0);
+    return {
+      items: items.map((item) => ({
+        key: item.key,
+        label: item.label,
+        amount: Number(item.amount || 0),
+        color: item.color,
+        percent: total > 0 ? (Number(item.amount || 0) / total) * 100 : 0,
+      })),
+      total,
+    };
+  }
+
+  function getRecentByType(kind, limit) {
+    const rows = sortTransactionsByTime(state.currentTransactions || []);
+    if (kind === "all") {
+      return rows.slice(0, limit);
+    }
+    return rows.filter((tx) => String(tx.kind || "") === kind).slice(0, limit);
+  }
+
+  function renderRecent(items, kind) {
     els.recentList.innerHTML = "";
     if (!items || items.length === 0) {
+      const wrap = document.createElement("div");
+      wrap.className = "empty-wrap";
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "За выбранный период расходов нет.";
-      els.recentList.appendChild(empty);
+      if (kind === "income") {
+        empty.textContent = "Пока нет доходов за этот период";
+      } else if (kind === "expense") {
+        empty.textContent = "Пока нет расходов за этот период";
+      } else {
+        empty.textContent = "Пока нет транзакций за этот период";
+      }
+      wrap.appendChild(empty);
+      if (kind === "income" || kind === "expense") {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "empty-action-btn";
+        btn.textContent = kind === "income" ? "Добавить доход" : "Добавить расход";
+        btn.addEventListener("click", () => {
+          els.screenTitle.textContent = "Раздел";
+          showPlaceholder("+");
+        });
+        wrap.appendChild(btn);
+      }
+      els.recentList.appendChild(wrap);
       return;
     }
     items.forEach((item) => {
+      const txKind = String(item.kind || "expense");
       const title = escapeHtml(item.description || item.category_label || "Операция");
       const label = escapeHtml(item.category_label || "Прочее");
+      const amountClass = txKind === "income" ? "income" : "expense";
+      const sign = txKind === "income" ? "+" : "-";
       const tx = document.createElement("article");
       tx.className = "tx-item";
       tx.innerHTML = `
-        <div class="tx-icon expense">${lucideSvg(categoryIconName(item.category_label, "expense"))}</div>
+        <div class="tx-icon ${amountClass}">${lucideSvg(categoryIconName(item.category_label, txKind))}</div>
         <div class="tx-main">
           <div class="tx-title">${title}</div>
           <div class="tx-meta">${label} • ${fmtDateTime(item.created_at_iso)}</div>
         </div>
-        <div class="tx-amount expense">-${fmtMoney(item.amount, false)}</div>
+        <div class="tx-amount ${amountClass}">${sign}${fmtMoney(item.amount, false)}</div>
       `;
       els.recentList.appendChild(tx);
     });
   }
 
-  function renderChart(chart) {
-    const items = (chart && chart.items) || [];
-    if (!items.length) {
-      els.donut.style.background = "conic-gradient(#dedeee 0deg 360deg)";
-      els.chartLegend.innerHTML = `<div class="empty">Нет данных по категориям.</div>`;
-      els.donutTotal.textContent = "0";
+  function renderChartFromBreakdown(parsedBreakdown) {
+    const parsed = parsedBreakdown || { items: [], total: 0 };
+    state.chartItems = parsed.items;
+    state.chartTotal = Number(parsed.total || 0);
+    if (!state.chartItems.some((item) => item.key === state.activeCategoryKey)) {
+      state.activeCategoryKey = null;
+    }
+    renderInteractiveChart();
+  }
+
+  function buildTrendSeries(items, startIso, endIso) {
+    const start = parseDateOnly(startIso);
+    const end = parseDateOnly(endIso);
+    if (!start || !end || start.getTime() > end.getTime()) {
+      return { labels: [], income: [], expense: [] };
+    }
+
+    const days = [];
+    const income = [];
+    const expense = [];
+    const dayMap = new Map();
+    let cursor = new Date(start);
+    while (cursor.getTime() <= end.getTime()) {
+      const key = toDateOnlyIso(cursor);
+      days.push(key);
+      income.push(0);
+      expense.push(0);
+      dayMap.set(key, days.length - 1);
+      cursor = addDays(cursor, 1);
+    }
+
+    (items || []).forEach((row) => {
+      const dt = parseIsoDateTime(row.created_at_iso);
+      if (Number.isNaN(dt.getTime())) return;
+      const key = toDateOnlyIso(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+      if (!dayMap.has(key)) return;
+      const idx = dayMap.get(key);
+      const amount = Number(row.amount || 0);
+      if (String(row.kind || "") === "income") {
+        income[idx] += amount;
+      } else if (String(row.kind || "") === "expense") {
+        expense[idx] += amount;
+      }
+    });
+
+    return { labels: days, income, expense };
+  }
+
+  function buildPolylinePath(values, xOf, yOf) {
+    return values
+      .map((value, idx) => `${idx === 0 ? "M" : "L"} ${xOf(idx).toFixed(2)} ${yOf(value).toFixed(2)}`)
+      .join(" ");
+  }
+
+  function renderBalanceTrendChart(items, startIso, endIso) {
+    const series = buildTrendSeries(items, startIso, endIso);
+    if (!series.labels.length) {
+      els.balanceTrendSvg.innerHTML = "";
+      els.balanceTrendLegend.innerHTML = "";
       return;
     }
 
-    let total = 0;
-    items.forEach((item) => {
-      total += Number(item.amount || 0);
-    });
-    total = total || 1;
+    const width = 320;
+    const height = 160;
+    const padding = { left: 14, right: 8, top: 8, bottom: 18 };
+    const chartW = width - padding.left - padding.right;
+    const chartH = height - padding.top - padding.bottom;
+    const maxIncome = Math.max(...series.income, 0);
+    const maxExpense = Math.max(...series.expense, 0);
+    const maxY = Math.max(maxIncome, maxExpense, 1);
+    const xOf = (idx) =>
+      padding.left + (series.labels.length <= 1 ? chartW / 2 : (idx / (series.labels.length - 1)) * chartW);
+    const yOf = (val) => padding.top + chartH - (Number(val || 0) / maxY) * chartH;
 
-    let angle = 0;
-    const parts = items.map((item, idx) => {
-      const color = chartColors[idx % chartColors.length];
-      const slice = (Number(item.amount || 0) / total) * 360;
-      const start = angle;
-      const end = angle + slice;
-      angle = end;
-      return `${color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
-    });
+    const incomePath = buildPolylinePath(series.income, xOf, yOf);
+    const expensePath = buildPolylinePath(series.expense, xOf, yOf);
+    const grid = [0, 1, 2, 3]
+      .map((step) => {
+        const y = padding.top + (chartH / 3) * step;
+        return `<line class="trend-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`;
+      })
+      .join("");
 
-    els.donut.style.background = `conic-gradient(${parts.join(", ")})`;
-    els.donutTotal.textContent = `${fmtShortMoney(chart.total_expense || 0)}`;
+    const incomeDots = series.income
+      .map(
+        (v, idx) =>
+          `<circle class="trend-dot income" cx="${xOf(idx)}" cy="${yOf(v)}" r="${series.labels.length > 14 ? 1.8 : 2.5}"></circle>`
+      )
+      .join("");
+    const expenseDots = series.expense
+      .map(
+        (v, idx) =>
+          `<circle class="trend-dot expense" cx="${xOf(idx)}" cy="${yOf(v)}" r="${series.labels.length > 14 ? 1.8 : 2.5}"></circle>`
+      )
+      .join("");
 
-    els.chartLegend.innerHTML = "";
-    items.forEach((item, idx) => {
-      const label = escapeHtml(item.label || "Прочее");
-      const color = chartColors[idx % chartColors.length];
-      const row = document.createElement("div");
-      row.className = "legend-item";
-      row.innerHTML = `
-        <span class="legend-icon" style="color:${color}">${lucideSvg(
-          categoryIconName(item.label, "expense"),
-          { width: 16, height: 16 }
-        )}</span>
-        <span>${label}</span>
-        <strong>${fmtMoney(item.amount, false)}</strong>
-      `;
-      els.chartLegend.appendChild(row);
-    });
+    els.balanceTrendSvg.innerHTML = `
+      ${grid}
+      <path class="trend-line income" d="${incomePath}"></path>
+      <path class="trend-line expense" d="${expensePath}"></path>
+      ${incomeDots}
+      ${expenseDots}
+    `;
+    els.balanceTrendLegend.innerHTML = `
+      <span class="trend-legend-item"><span class="trend-legend-dot income"></span>Доходы</span>
+      <span class="trend-legend-item"><span class="trend-legend-dot expense"></span>Расходы</span>
+    `;
+  }
+
+  function setAnalyticsTab(type) {
+    state.selectedAnalytics = type;
+    state.activeCategoryKey = null;
+    els.tabBalance.classList.toggle("active", type === "balance");
+    els.tabIncome.classList.toggle("active", type === "income");
+    els.tabExpense.classList.toggle("active", type === "expense");
+  }
+
+  function renderAnalytics(summary, periodObj) {
+    const tab = state.selectedAnalytics;
+    els.analyticsPanel.classList.remove("analytics-switch");
+    els.recentPanel.classList.remove("analytics-switch");
+    void els.analyticsPanel.offsetWidth;
+    els.analyticsPanel.classList.add("analytics-switch");
+    els.recentPanel.classList.add("analytics-switch");
+
+    if (tab === "balance") {
+      const currentBalance = Number(summary.balance || 0);
+      const prevBalance = Number((state.comparison && state.comparison.prevBalance) || 0);
+      let pct = 0;
+      if (prevBalance === 0) {
+        pct = currentBalance === 0 ? 0 : currentBalance > 0 ? 100 : -100;
+      } else {
+        pct = ((currentBalance - prevBalance) / Math.abs(prevBalance)) * 100;
+      }
+      const direction = currentBalance - prevBalance;
+      els.chartSectionTitle.textContent = "Динамика баланса";
+      els.recentSectionTitle.textContent = "Последние транзакции";
+      els.balanceAnalytics.classList.remove("hidden");
+      els.breakdownView.classList.add("hidden");
+      els.balanceMainValue.classList.toggle("negative", currentBalance < 0);
+      els.balanceMainValue.textContent = fmtMoney(currentBalance, true);
+
+      const compareLabel = (state.comparison && state.comparison.label) || "к прошлому периоду";
+      if (!state.comparison) {
+        els.balanceDelta.className = "balance-delta neutral";
+        els.balanceDelta.textContent = "Нет данных для сравнения";
+      } else {
+        const up = direction >= 0;
+        els.balanceDelta.className = `balance-delta ${up ? "up" : "down"}`;
+        els.balanceDelta.textContent = `${up ? "↑" : "↓"} ${fmtSignedPercent(pct)} ${compareLabel}`;
+      }
+      renderBalanceTrendChart(state.currentTransactions, periodObj.start, periodObj.end);
+      renderRecent(getRecentByType("all", 5), "all");
+      return;
+    }
+
+    els.balanceAnalytics.classList.add("hidden");
+    els.breakdownView.classList.remove("hidden");
+    if (tab === "income") {
+      els.chartSectionTitle.textContent = "Разбивка доходов";
+      els.recentSectionTitle.textContent = "Последние доходы";
+      renderChartFromBreakdown(buildBreakdownByType("income"));
+      renderRecent(getRecentByType("income", 5), "income");
+      return;
+    }
+
+    els.chartSectionTitle.textContent = "Разбивка расходов";
+    els.recentSectionTitle.textContent = "Последние расходы";
+    renderChartFromBreakdown(buildBreakdownByType("expense"));
+    renderRecent(getRecentByType("expense", 5), "expense");
+  }
+
+  function summaryFromCurrentTransactions() {
+    const income = Number(
+      (state.currentTransactions || [])
+        .filter((x) => String(x.kind || "") === "income")
+        .reduce((acc, x) => acc + Number(x.amount || 0), 0)
+    );
+    const expense = Number(
+      (state.currentTransactions || [])
+        .filter((x) => String(x.kind || "") === "expense")
+        .reduce((acc, x) => acc + Number(x.amount || 0), 0)
+    );
+    return { income, expense, balance: income - expense };
   }
 
   function renderOverview(payload) {
@@ -390,27 +867,36 @@
     state.end = periodObj.end || state.end;
     updatePeriodLabel();
 
-    const summary = payload && payload.summary ? payload.summary : {};
+    const summary = payload && payload.summary ? payload.summary : summaryFromCurrentTransactions();
     els.incomeValue.textContent = fmtMoney(summary.income || 0, false);
     els.expenseValue.textContent = fmtMoney(summary.expense || 0, false);
     els.balanceValue.textContent = fmtMoney(summary.balance || 0, true);
-
-    renderChart(payload.chart || { items: [], total_expense: 0 });
-    renderRecent(payload.recent_expenses || []);
+    renderAnalytics(summary, payload.period || { start: state.start, end: state.end });
     setStatusBanner("", "info");
   }
 
   function renderTransactions(items) {
     els.transactionsList.innerHTML = "";
-    if (!items || items.length === 0) {
+    const typeFilter = state.transactionsTypeFilter || "all";
+    const filtered = (items || []).filter((item) => {
+      if (typeFilter === "all") return true;
+      return String(item.kind || "") === typeFilter;
+    });
+
+    if (!filtered.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "Нет транзакций за выбранный период.";
+      empty.textContent =
+        typeFilter === "income"
+          ? "Нет доходов за выбранный период."
+          : typeFilter === "expense"
+            ? "Нет расходов за выбранный период."
+            : "Нет транзакций за выбранный период.";
       els.transactionsList.appendChild(empty);
       return;
     }
 
-    items.forEach((item) => {
+    filtered.forEach((item) => {
       const tx = document.createElement("article");
       const amountCls = item.kind === "income" ? "income" : "expense";
       const sign = item.kind === "income" ? "+" : "-";
@@ -440,6 +926,41 @@
     state.isLoading = true;
     try {
       const payload = await fetchJsonWithFallback("overview");
+      const periodObj = payload && payload.period ? payload.period : {};
+      const txPayload = await fetchJsonWithFallback("transactions", {
+        scope: payload && payload.scope ? payload.scope.selected || state.scope : state.scope,
+        period: periodObj.mode || state.period,
+        start: periodObj.start || state.start,
+        end: periodObj.end || state.end,
+      });
+
+      state.currentTransactions = Array.isArray(txPayload && txPayload.items) ? txPayload.items : [];
+
+      const compareRange = getComparisonRange(
+        periodObj.mode || state.period,
+        periodObj.start || state.start,
+        periodObj.end || state.end
+      );
+      state.comparison = null;
+      if (compareRange) {
+        try {
+          const prevOverview = await fetchJsonWithFallback("overview", {
+            scope: payload && payload.scope ? payload.scope.selected || state.scope : state.scope,
+            period: "custom",
+            start: compareRange.start,
+            end: compareRange.end,
+          });
+          const prevSummary = (prevOverview && prevOverview.summary) || {};
+          state.comparison = {
+            prevBalance: Number(prevSummary.balance || 0),
+            label: compareRange.label,
+          };
+        } catch (comparisonError) {
+          state.comparison = null;
+          console.error("comparison overview fetch failed", comparisonError);
+        }
+      }
+
       state.apiUnavailable = false;
       renderOverview(payload);
     } catch (err) {
@@ -466,7 +987,9 @@
     try {
       const payload = await fetchJsonWithFallback("transactions");
       state.apiUnavailable = false;
-      renderTransactions(payload.items || []);
+      const items = Array.isArray(payload && payload.items) ? payload.items : [];
+      state.currentTransactions = items;
+      renderTransactions(items);
       setStatusBanner("", "info");
     } catch (err) {
       state.apiUnavailable = true;
@@ -483,6 +1006,22 @@
   }
 
   function bindEvents() {
+    els.tabBalance.addEventListener("click", () => {
+      if (state.isLoading) return;
+      setAnalyticsTab("balance");
+      renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
+    });
+    els.tabIncome.addEventListener("click", () => {
+      if (state.isLoading) return;
+      setAnalyticsTab("income");
+      renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
+    });
+    els.tabExpense.addEventListener("click", () => {
+      if (state.isLoading) return;
+      setAnalyticsTab("expense");
+      renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
+    });
+
     els.openScopeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (state.isLoading) return;
@@ -536,6 +1075,11 @@
 
     els.viewAllBtn.addEventListener("click", async () => {
       els.screenTitle.textContent = "Транзакции";
+      if (state.selectedAnalytics === "income" || state.selectedAnalytics === "expense") {
+        state.transactionsTypeFilter = state.selectedAnalytics;
+      } else {
+        state.transactionsTypeFilter = "all";
+      }
       showScreen("transactions");
       await loadTransactions();
     });
@@ -548,6 +1092,7 @@
 
     els.navTransactions.addEventListener("click", async () => {
       els.screenTitle.textContent = "Транзакции";
+      state.transactionsTypeFilter = "all";
       showScreen("transactions");
       await loadTransactions();
     });
@@ -573,6 +1118,7 @@
       window.lucide.createIcons();
     }
     bindEvents();
+    setAnalyticsTab(state.selectedAnalytics);
     updatePeriodLabel();
     els.scopeLabel.textContent = "Общие расходы";
     showScreen("home");
