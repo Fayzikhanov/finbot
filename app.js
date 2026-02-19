@@ -47,6 +47,7 @@
   };
 
   const els = {
+    appRoot: document.getElementById("app"),
     screenTitle: document.getElementById("screenTitle"),
     scopeLabel: document.getElementById("scopeLabel"),
     scopeMenu: document.getElementById("scopeMenu"),
@@ -640,6 +641,8 @@
 
   function showScreen(name) {
     state.screen = name;
+    const isAddScreen = name === "add";
+    els.appRoot.classList.toggle("is-add-screen", isAddScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
     els.transactionsScreen.classList.toggle("hidden", name !== "transactions");
     els.addScreen.classList.toggle("hidden", name !== "add");
@@ -651,6 +654,12 @@
     els.navConverter.classList.toggle("active", false);
     els.navProfile.classList.toggle("active", false);
     els.navAdd.classList.toggle("hidden", name === "add");
+
+    if (isAddScreen) {
+      closeScopeMenu();
+      closeDateSheet();
+      setStatusBanner("", "info");
+    }
   }
 
   function showPlaceholder(title) {
