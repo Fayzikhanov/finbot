@@ -33,49 +33,62 @@
 
       <main id="homeScreen" class="screen">
         <section class="summary-stack">
-          <article class="card balance-main">
+          <button id="tabBalance" class="card balance-main tab-card" data-analytics="balance" type="button">
             <div class="card-head">
               <i data-lucide="wallet"></i>
               <div class="card-title">Баланс</div>
             </div>
             <div id="balanceValue" class="card-value main">0 сум</div>
-          </article>
+          </button>
 
           <div class="cards-grid">
-            <article class="card metric">
+            <button id="tabIncome" class="card metric tab-card" data-analytics="income" type="button">
               <div class="card-head">
                 <i data-lucide="arrow-down-left"></i>
                 <div class="card-title">Доходы</div>
               </div>
               <div id="incomeValue" class="card-value">0 сум</div>
-            </article>
-            <article class="card metric">
+            </button>
+            <button id="tabExpense" class="card metric tab-card active" data-analytics="expense" type="button">
               <div class="card-head">
                 <i data-lucide="arrow-up-right"></i>
                 <div class="card-title">Расходы</div>
               </div>
               <div id="expenseValue" class="card-value">0 сум</div>
-            </article>
+            </button>
           </div>
         </section>
 
-        <section class="panel">
+        <section id="analyticsPanel" class="panel expense-breakdown">
           <div class="panel-head">
-            <h2>Разбивка расходов</h2>
+            <h2 id="chartSectionTitle">Разбивка расходов</h2>
           </div>
-          <div class="chart-block">
-            <div id="donut" class="donut"></div>
-            <div class="donut-center">
-              <div id="donutTotal" class="donut-total">0</div>
-              <div class="donut-sub">Итого</div>
+
+          <div id="balanceAnalytics" class="balance-analytics hidden">
+            <div id="balanceMainValue" class="balance-main-value">0 сум</div>
+            <div id="balanceDelta" class="balance-delta neutral">—</div>
+            <div class="balance-trend-card">
+              <svg id="balanceTrendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"></svg>
+              <div id="balanceTrendLegend" class="trend-legend"></div>
             </div>
           </div>
-          <div id="chartLegend" class="legend"></div>
+
+          <div id="breakdownView">
+            <div class="chart-block">
+              <div id="donut" class="donut"></div>
+              <div class="donut-center">
+                <div id="donutTotal" class="donut-total">0</div>
+                <div id="donutSub" class="donut-sub">Всего за период</div>
+                <div id="donutMeta" class="donut-meta hidden"></div>
+              </div>
+            </div>
+            <div id="chartLegend" class="legend"></div>
+          </div>
         </section>
 
-        <section class="panel">
+        <section id="recentPanel" class="panel">
           <div class="panel-head">
-            <h2>Последние расходы</h2>
+            <h2 id="recentSectionTitle">Последние расходы</h2>
             <button id="viewAllBtn" class="link-btn" type="button">Посмотреть все</button>
           </div>
           <div id="recentList" class="tx-list"></div>
