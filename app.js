@@ -7,10 +7,12 @@
 
   const query = new URLSearchParams(window.location.search);
   const chatId = Number(query.get("chat_id") || "0");
+  const currentUserId = Number(query.get("user_id") || "0");
   const apiBaseParam = String(query.get("api_base") || "").trim();
 
   const state = {
     chatId,
+    currentUserId,
     scope: "all",
     period: "today",
     start: null,
@@ -26,6 +28,19 @@
     currentTransactions: [],
     transactionsTypeFilter: "all",
     comparison: null,
+    categoriesByKind: { expense: [], income: [] },
+    addForm: {
+      kind: "expense",
+      context: "personal",
+      amountText: "",
+      description: "",
+      categoryKey: "",
+      categoryLabel: "",
+      categoryManual: false,
+      dateValue: "",
+      timeValue: "",
+    },
+    addSubmitting: false,
     screen: "home",
     isLoading: false,
     apiUnavailable: false,
@@ -71,8 +86,24 @@
     transactionsList: document.getElementById("transactionsList"),
     homeScreen: document.getElementById("homeScreen"),
     transactionsScreen: document.getElementById("transactionsScreen"),
+    addScreen: document.getElementById("addScreen"),
     placeholderScreen: document.getElementById("placeholderScreen"),
     placeholderTitle: document.getElementById("placeholderTitle"),
+    addKindExpenseBtn: document.getElementById("addKindExpenseBtn"),
+    addKindIncomeBtn: document.getElementById("addKindIncomeBtn"),
+    addContextPersonalBtn: document.getElementById("addContextPersonalBtn"),
+    addContextFamilyBtn: document.getElementById("addContextFamilyBtn"),
+    addAmountInput: document.getElementById("addAmountInput"),
+    addDescriptionInput: document.getElementById("addDescriptionInput"),
+    addCategoryValue: document.getElementById("addCategoryValue"),
+    addChangeCategoryBtn: document.getElementById("addChangeCategoryBtn"),
+    addDateInput: document.getElementById("addDateInput"),
+    addTimeInput: document.getElementById("addTimeInput"),
+    addSaveBtn: document.getElementById("addSaveBtn"),
+    categorySheet: document.getElementById("categorySheet"),
+    categorySheetList: document.getElementById("categorySheetList"),
+    closeCategorySheetBtn: document.getElementById("closeCategorySheetBtn"),
+    appToast: document.getElementById("appToast"),
     navHome: document.getElementById("navHome"),
     navTransactions: document.getElementById("navTransactions"),
     navAdd: document.getElementById("navAdd"),
@@ -92,6 +123,28 @@
     "#A4B2C8",
     "#C7B28E",
   ];
+
+  const fallbackCategories = {
+    expense: [
+      { key: "groceries_products", label: "Продукты и быт / Продукты" },
+      { key: "cafe_coffee", label: "Кафе и рестораны / Кофе" },
+      { key: "transport_taxi", label: "Транспорт / Такси" },
+      { key: "home_utilities", label: "Жильё и дом / Коммунальные услуги" },
+      { key: "health_tests", label: "Здоровье / Анализы" },
+      { key: "expense_other", label: "Прочие расходы" },
+    ],
+    income: [
+      { key: "salary", label: "Зарплата" },
+      { key: "bonus", label: "Бонус/премия" },
+      { key: "profit", label: "Прибыль" },
+      { key: "windfall", label: "Выигрыш/находка" },
+      { key: "cashback", label: "Кэшбэк" },
+      { key: "income_other", label: "Прочие доходы" },
+    ],
+  };
+
+  let suggestDebounceTimer = null;
+  let toastTimer = null;
 
   function normalizeApiBase(raw) {
     const value = String(raw || "").trim();
@@ -303,15 +356,31 @@
   }
 
   function updateDonutCenter(activeItem) {
+    const setMoneyCenter = (amountValue) => {
+      const amount = Math.abs(Number(amountValue || 0));
+      const amountStr = new Intl.NumberFormat("ru-RU").format(amount);
+      const len = amountStr.length;
+      els.donutTotal.classList.remove("small", "xsmall");
+      if (len >= 11) {
+        els.donutTotal.classList.add("xsmall");
+      } else if (len >= 9) {
+        els.donutTotal.classList.add("small");
+      }
+      els.donutTotal.innerHTML = `
+        <span class="money-amount">${amountStr}</span>
+        <span class="money-currency">сум</span>
+      `;
+    };
+
     const total = Number(state.chartTotal || 0);
     if (activeItem) {
-      els.donutTotal.textContent = fmtMoney(activeItem.amount, false);
+      setMoneyCenter(activeItem.amount);
       els.donutSub.textContent = `${fmtPercent(activeItem.percent)}%`;
       els.donutMeta.textContent = activeItem.label;
       els.donutMeta.classList.remove("hidden");
       return;
     }
-    els.donutTotal.textContent = fmtMoney(total, false);
+    setMoneyCenter(total);
     els.donutSub.textContent = "Всего за период";
     els.donutMeta.textContent = "";
     els.donutMeta.classList.add("hidden");
@@ -455,6 +524,7 @@
 
     const params = new URLSearchParams();
     params.set("chat_id", String(opts.chatId || 0));
+    params.set("user_id", String(state.currentUserId || 0));
     params.set("scope", String(opts.scope || "all"));
     params.set("period", String(opts.period || "today"));
     if (opts.period === "custom" && opts.start && opts.end) {
@@ -484,17 +554,103 @@
     throw lastError || new Error("api unavailable");
   }
 
+  function buildPostQuery() {
+    const params = new URLSearchParams();
+    params.set("chat_id", String(state.chatId || 0));
+    params.set("user_id", String(state.currentUserId || 0));
+    return params.toString();
+  }
+
+  async function postJsonWithFallback(endpoint, payload) {
+    const suffix = endpoint.replace(/^\/+/, "");
+    const qs = buildPostQuery();
+    let lastError = null;
+    for (const base of apiCandidates) {
+      const url = `${base}/${suffix}?${qs}`;
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload || {}),
+          cache: "no-store",
+        });
+        if (!resp.ok) {
+          const errPayload = await resp.json().catch(() => ({}));
+          const message = errPayload && errPayload.error ? String(errPayload.error) : `HTTP ${resp.status}`;
+          lastError = new Error(message);
+          continue;
+        }
+        return await resp.json();
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error("api unavailable");
+  }
+
+  function parseAmountInput(value) {
+    const raw = String(value || "")
+      .replace(/[^\d]/g, "")
+      .trim();
+    if (!raw) return 0;
+    return Number(raw);
+  }
+
+  function formatAmountInput(value) {
+    const digits = String(value || "").replace(/[^\d]/g, "");
+    if (!digits) return "";
+    return new Intl.NumberFormat("ru-RU").format(Number(digits));
+  }
+
+  function nowLocalDateTimeParts() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const min = String(now.getMinutes()).padStart(2, "0");
+    return {
+      date: `${yyyy}-${mm}-${dd}`,
+      time: `${hh}:${min}`,
+    };
+  }
+
+  function clampFutureDateTime(dateValue, timeValue) {
+    const now = new Date();
+    const selected = new Date(`${dateValue}T${timeValue}`);
+    if (Number.isNaN(selected.getTime()) || selected <= now) {
+      return { date: dateValue, time: timeValue };
+    }
+    const nowParts = nowLocalDateTimeParts();
+    return { date: nowParts.date, time: nowParts.time };
+  }
+
+  function showToast(message) {
+    if (!message) return;
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+    }
+    els.appToast.textContent = message;
+    els.appToast.classList.remove("hidden");
+    toastTimer = setTimeout(() => {
+      els.appToast.classList.add("hidden");
+      els.appToast.textContent = "";
+    }, 2600);
+  }
+
   function showScreen(name) {
     state.screen = name;
     els.homeScreen.classList.toggle("hidden", name !== "home");
     els.transactionsScreen.classList.toggle("hidden", name !== "transactions");
+    els.addScreen.classList.toggle("hidden", name !== "add");
     els.placeholderScreen.classList.toggle("hidden", name !== "placeholder");
 
     els.navHome.classList.toggle("active", name === "home");
     els.navTransactions.classList.toggle("active", name === "transactions");
-    els.navAdd.classList.toggle("active", false);
+    els.navAdd.classList.toggle("active", name === "add");
     els.navConverter.classList.toggle("active", false);
     els.navProfile.classList.toggle("active", false);
+    els.navAdd.classList.toggle("hidden", name === "add");
   }
 
   function showPlaceholder(title) {
@@ -506,6 +662,7 @@
 
     els.navHome.classList.remove("active");
     els.navTransactions.classList.remove("active");
+    els.navAdd.classList.remove("hidden");
     els.navAdd.classList.toggle("active", title === "+");
     els.navConverter.classList.toggle("active", title === "Конвертер");
     els.navProfile.classList.toggle("active", title === "Профиль");
@@ -561,6 +718,212 @@
 
   function closeDateSheet() {
     els.dateSheet.classList.add("hidden");
+  }
+
+  function categoryOptions(kind) {
+    const fromApi = state.categoriesByKind && Array.isArray(state.categoriesByKind[kind])
+      ? state.categoriesByKind[kind]
+      : [];
+    if (fromApi.length) return fromApi;
+    return fallbackCategories[kind] || [];
+  }
+
+  function setAddKind(kind) {
+    state.addForm.kind = kind === "income" ? "income" : "expense";
+    state.addForm.categoryManual = false;
+    state.addForm.categoryKey = "";
+    state.addForm.categoryLabel = "";
+    els.addKindExpenseBtn.classList.toggle("active", state.addForm.kind === "expense");
+    els.addKindIncomeBtn.classList.toggle("active", state.addForm.kind === "income");
+    renderAddCategoryValue();
+    triggerAutoCategoryDebounced();
+  }
+
+  function setAddContext(context) {
+    state.addForm.context = context === "family" ? "family" : "personal";
+    els.addContextPersonalBtn.classList.toggle("active", state.addForm.context === "personal");
+    els.addContextFamilyBtn.classList.toggle("active", state.addForm.context === "family");
+    if (!state.addForm.categoryManual) {
+      triggerAutoCategoryDebounced();
+    }
+  }
+
+  function renderAddCategoryValue() {
+    const label = state.addForm.categoryLabel || "Определяю автоматически…";
+    els.addCategoryValue.textContent = label;
+  }
+
+  function setDefaultAddDateTime() {
+    const nowParts = nowLocalDateTimeParts();
+    state.addForm.dateValue = nowParts.date;
+    state.addForm.timeValue = nowParts.time;
+    els.addDateInput.max = nowParts.date;
+    els.addDateInput.value = nowParts.date;
+    els.addTimeInput.value = nowParts.time;
+  }
+
+  async function loadCategoriesForAdd() {
+    try {
+      const payload = await fetchJsonWithFallback("categories");
+      const categories = (payload && payload.categories) || {};
+      if (Array.isArray(categories.expense)) {
+        state.categoriesByKind.expense = categories.expense;
+      }
+      if (Array.isArray(categories.income)) {
+        state.categoriesByKind.income = categories.income;
+      }
+    } catch (err) {
+      console.error("categories fetch failed", err);
+    }
+  }
+
+  function openCategorySheet() {
+    const items = categoryOptions(state.addForm.kind);
+    els.categorySheetList.innerHTML = "";
+    items.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "category-sheet-item";
+      btn.textContent = item.label;
+      btn.addEventListener("click", () => {
+        state.addForm.categoryManual = true;
+        state.addForm.categoryKey = item.key;
+        state.addForm.categoryLabel = item.label;
+        renderAddCategoryValue();
+        closeCategorySheet();
+      });
+      els.categorySheetList.appendChild(btn);
+    });
+    els.categorySheet.classList.remove("hidden");
+  }
+
+  function closeCategorySheet() {
+    els.categorySheet.classList.add("hidden");
+  }
+
+  async function requestAutoCategory() {
+    const description = String(state.addForm.description || "").trim();
+    const amount = parseAmountInput(state.addForm.amountText || "");
+    if (!description || amount <= 0) {
+      if (!state.addForm.categoryManual) {
+        state.addForm.categoryKey = "";
+        state.addForm.categoryLabel = "";
+        renderAddCategoryValue();
+      }
+      return;
+    }
+    try {
+      const payload = await postJsonWithFallback("suggest_category", {
+        kind: state.addForm.kind,
+        amount,
+        description,
+        is_family: state.addForm.context === "family",
+      });
+      const category = payload && payload.category ? payload.category : null;
+      if (category && typeof category.key === "string" && typeof category.label === "string") {
+        if (!state.addForm.categoryManual) {
+          state.addForm.categoryKey = category.key;
+          state.addForm.categoryLabel = category.label;
+          renderAddCategoryValue();
+        }
+      }
+    } catch (err) {
+      console.error("suggest category failed", err);
+    }
+  }
+
+  function triggerAutoCategoryDebounced() {
+    if (state.addForm.categoryManual) return;
+    if (suggestDebounceTimer) {
+      clearTimeout(suggestDebounceTimer);
+    }
+    suggestDebounceTimer = setTimeout(() => {
+      requestAutoCategory();
+    }, 480);
+  }
+
+  function addFormDateTimeIso() {
+    return `${state.addForm.dateValue}T${state.addForm.timeValue}`;
+  }
+
+  function validateAddForm() {
+    const amount = parseAmountInput(state.addForm.amountText);
+    if (amount <= 0) return "Введите сумму больше 0";
+    if (!String(state.addForm.description || "").trim()) return "Введите название транзакции";
+    if (!state.addForm.kind) return "Выберите тип транзакции";
+    if (!state.addForm.context) return "Выберите контекст";
+    if (!state.addForm.dateValue || !state.addForm.timeValue) return "Укажите дату и время";
+
+    const now = new Date();
+    const selected = new Date(addFormDateTimeIso());
+    if (Number.isNaN(selected.getTime())) return "Некорректная дата или время";
+    if (selected > now) return "Нельзя выбрать дату/время в будущем";
+    return null;
+  }
+
+  async function submitAddTransaction() {
+    const err = validateAddForm();
+    if (err) {
+      showToast(err);
+      return;
+    }
+
+    state.addSubmitting = true;
+    els.addSaveBtn.disabled = true;
+    try {
+      const amount = parseAmountInput(state.addForm.amountText);
+      const payload = {
+        kind: state.addForm.kind,
+        amount,
+        description: String(state.addForm.description || "").trim(),
+        is_family: state.addForm.context === "family",
+        category: state.addForm.categoryKey || undefined,
+        datetime_local: addFormDateTimeIso(),
+      };
+      await postJsonWithFallback("create_transaction", payload);
+      showToast("Сохранено");
+      state.addForm.amountText = "";
+      state.addForm.description = "";
+      state.addForm.categoryKey = "";
+      state.addForm.categoryLabel = "";
+      state.addForm.categoryManual = false;
+      els.addAmountInput.value = "";
+      els.addDescriptionInput.value = "";
+      setDefaultAddDateTime();
+      renderAddCategoryValue();
+      await loadOverview();
+      els.screenTitle.textContent = "Главная";
+      showScreen("home");
+    } catch (submitErr) {
+      console.error("create transaction failed", submitErr);
+      showToast(`Ошибка: ${String(submitErr.message || "не удалось сохранить")}`);
+    } finally {
+      state.addSubmitting = false;
+      els.addSaveBtn.disabled = false;
+    }
+  }
+
+  function openAddScreen(initialKind) {
+    if (initialKind === "income" || initialKind === "expense") {
+      setAddKind(initialKind);
+    }
+    setAddContext(state.addForm.context);
+    if (!state.addForm.dateValue || !state.addForm.timeValue) {
+      setDefaultAddDateTime();
+    } else {
+      const nowParts = nowLocalDateTimeParts();
+      els.addDateInput.max = nowParts.date;
+      const clamped = clampFutureDateTime(state.addForm.dateValue, state.addForm.timeValue);
+      state.addForm.dateValue = clamped.date;
+      state.addForm.timeValue = clamped.time;
+      els.addDateInput.value = state.addForm.dateValue;
+      els.addTimeInput.value = state.addForm.timeValue;
+    }
+    els.addAmountInput.value = state.addForm.amountText;
+    els.addDescriptionInput.value = state.addForm.description;
+    renderAddCategoryValue();
+    els.screenTitle.textContent = "Добавить транзакцию";
+    showScreen("add");
   }
 
   function parseIsoDateTime(value) {
@@ -636,8 +999,7 @@
         btn.className = "empty-action-btn";
         btn.textContent = kind === "income" ? "Добавить доход" : "Добавить расход";
         btn.addEventListener("click", () => {
-          els.screenTitle.textContent = "Раздел";
-          showPlaceholder("+");
+          openAddScreen(kind);
         });
         wrap.appendChild(btn);
       }
@@ -1022,6 +1384,52 @@
       renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
     });
 
+    els.addKindExpenseBtn.addEventListener("click", () => setAddKind("expense"));
+    els.addKindIncomeBtn.addEventListener("click", () => setAddKind("income"));
+    els.addContextPersonalBtn.addEventListener("click", () => setAddContext("personal"));
+    els.addContextFamilyBtn.addEventListener("click", () => setAddContext("family"));
+
+    els.addAmountInput.addEventListener("input", () => {
+      const formatted = formatAmountInput(els.addAmountInput.value);
+      state.addForm.amountText = formatted;
+      els.addAmountInput.value = formatted;
+      if (!state.addForm.categoryManual) {
+        triggerAutoCategoryDebounced();
+      }
+    });
+
+    els.addDescriptionInput.addEventListener("input", () => {
+      state.addForm.description = els.addDescriptionInput.value || "";
+      if (!state.addForm.categoryManual) {
+        triggerAutoCategoryDebounced();
+      }
+    });
+
+    els.addDateInput.addEventListener("change", () => {
+      state.addForm.dateValue = els.addDateInput.value || state.addForm.dateValue;
+      const clamped = clampFutureDateTime(state.addForm.dateValue, state.addForm.timeValue || "00:00");
+      state.addForm.dateValue = clamped.date;
+      state.addForm.timeValue = clamped.time;
+      els.addDateInput.value = clamped.date;
+      els.addTimeInput.value = clamped.time;
+    });
+
+    els.addTimeInput.addEventListener("change", () => {
+      state.addForm.timeValue = els.addTimeInput.value || state.addForm.timeValue;
+      const clamped = clampFutureDateTime(state.addForm.dateValue, state.addForm.timeValue);
+      state.addForm.dateValue = clamped.date;
+      state.addForm.timeValue = clamped.time;
+      els.addDateInput.value = clamped.date;
+      els.addTimeInput.value = clamped.time;
+    });
+
+    els.addChangeCategoryBtn.addEventListener("click", openCategorySheet);
+    els.closeCategorySheetBtn.addEventListener("click", closeCategorySheet);
+    els.categorySheet.addEventListener("click", (e) => {
+      if (e.target === els.categorySheet) closeCategorySheet();
+    });
+    els.addSaveBtn.addEventListener("click", submitAddTransaction);
+
     els.openScopeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (state.isLoading) return;
@@ -1086,6 +1494,7 @@
 
     els.navHome.addEventListener("click", async () => {
       els.screenTitle.textContent = "Главная";
+      els.navAdd.classList.remove("hidden");
       showScreen("home");
       await loadOverview();
     });
@@ -1093,22 +1502,25 @@
     els.navTransactions.addEventListener("click", async () => {
       els.screenTitle.textContent = "Транзакции";
       state.transactionsTypeFilter = "all";
+      els.navAdd.classList.remove("hidden");
       showScreen("transactions");
       await loadTransactions();
     });
 
     els.navAdd.addEventListener("click", () => {
-      els.screenTitle.textContent = "Раздел";
-      showPlaceholder("+");
+      const defaultKind = state.selectedAnalytics === "income" ? "income" : "expense";
+      openAddScreen(defaultKind);
     });
 
     els.navConverter.addEventListener("click", () => {
       els.screenTitle.textContent = "Раздел";
+      els.navAdd.classList.remove("hidden");
       showPlaceholder("Конвертер");
     });
 
     els.navProfile.addEventListener("click", () => {
       els.screenTitle.textContent = "Раздел";
+      els.navAdd.classList.remove("hidden");
       showPlaceholder("Профиль");
     });
   }
@@ -1119,6 +1531,11 @@
     }
     bindEvents();
     setAnalyticsTab(state.selectedAnalytics);
+    setAddKind("expense");
+    setAddContext("personal");
+    setDefaultAddDateTime();
+    renderAddCategoryValue();
+    await loadCategoriesForAdd();
     updatePeriodLabel();
     els.scopeLabel.textContent = "Общие расходы";
     showScreen("home");
