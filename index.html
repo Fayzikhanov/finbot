@@ -98,6 +98,7 @@
       <main id="analyticsScreen" class="screen hidden">
         <section class="panel">
           <div id="analyticsHero" class="analytics-hero"></div>
+          <div id="analyticsStatus" class="analytics-status"></div>
           <div id="analyticsForecast" class="analytics-forecast"></div>
         </section>
 
@@ -112,7 +113,7 @@
           <div id="analyticsTrendChanges" class="analytics-delta-grid"></div>
         </section>
 
-        <section class="panel">
+        <section id="analyticsComparisonSection" class="panel">
           <div class="panel-head">
             <h2>Сравнение периодов</h2>
           </div>
@@ -521,7 +522,7 @@
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./utils/analytics.js?v=2"></script>
+    <script src="./utils/analytics.js?v=3"></script>
     <script src="./app.js"></script>
   </body>
 </html>
