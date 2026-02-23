@@ -124,6 +124,8 @@
     analyticsScreen: document.getElementById("analyticsScreen"),
     balanceTrendSvg: document.getElementById("balanceTrendSvg"),
     balanceTrendLegend: document.getElementById("balanceTrendLegend"),
+    analyticsHero: document.getElementById("analyticsHero"),
+    analyticsForecast: document.getElementById("analyticsForecast"),
     analyticsTrendChanges: document.getElementById("analyticsTrendChanges"),
     analyticsComparisonCard: document.getElementById("analyticsComparisonCard"),
     analyticsTopCategories: document.getElementById("analyticsTopCategories"),
@@ -2269,19 +2271,81 @@
     return `<div class="empty">${escapeHtml(text || "Нет данных за выбранный период.")}</div>`;
   }
 
+  function renderAnalyticsHero(report) {
+    if (!els.analyticsHero) return;
+    const hero = report && report.hero ? report.hero : null;
+    if (!hero) {
+      els.analyticsHero.innerHTML = analyticsEmptyHtml("Нет главного вывода за выбранный период.");
+      return;
+    }
+    const tone = String(hero.tone || "neutral");
+    let valueText = "";
+    if (hero.valueType === "money") {
+      valueText = `на ${fmtMoney(hero.value || 0, false)}`;
+    } else if (hero.valueType === "percent") {
+      valueText = `на ${fmtPercent(Math.abs(Number(hero.value || 0)))}%`;
+    } else {
+      valueText = String(hero.valueText || "—");
+    }
+    const iconName = tone === "positive" ? "badge-check" : tone === "warning" ? "triangle-alert" : "sparkles";
+    els.analyticsHero.innerHTML = `
+      <div class="analytics-hero-card ${tone}">
+        <div class="analytics-hero-icon ${tone}">${lucideSvg(iconName, { width: 18, height: 18 })}</div>
+        <div class="analytics-hero-body">
+          <div class="analytics-hero-title">${escapeHtml(hero.title || "Главный вывод")}</div>
+          <div class="analytics-hero-value ${tone}">${escapeHtml(valueText)}</div>
+          <div class="analytics-hero-sub">${escapeHtml(hero.subtitle || "")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAnalyticsForecast(report) {
+    if (!els.analyticsForecast) return;
+    const forecast = report && report.forecast ? report.forecast : null;
+    if (!forecast || !forecast.applicable) {
+      els.analyticsForecast.innerHTML = "";
+      return;
+    }
+    if (Number(forecast.avgExpensePerDay || 0) <= 0) {
+      els.analyticsForecast.innerHTML = `
+        <div class="analytics-forecast-card">
+          <div class="analytics-forecast-title">Прогноз до конца месяца</div>
+          <div class="analytics-forecast-text">Пока недостаточно расходов, чтобы построить прогноз.</div>
+        </div>
+      `;
+      return;
+    }
+    const remainingDays = Number(forecast.remainingDaysInMonth || 0);
+    const projected = Number(forecast.projectedExpenseToMonthEnd || 0);
+    els.analyticsForecast.innerHTML = `
+      <div class="analytics-forecast-card">
+        <div class="analytics-forecast-title">Прогноз до конца месяца</div>
+        <div class="analytics-forecast-text">
+          Если сохранится текущий темп, расходы составят ~ ${fmtMoney(projected, false)}
+        </div>
+        <div class="analytics-forecast-meta">
+          ${remainingDays > 0
+            ? `Осталось ${remainingDays} дн.`
+            : "Сегодня последний день месяца"}
+        </div>
+      </div>
+    `;
+  }
+
   function renderAnalyticsTrendChanges(report) {
     if (!els.analyticsTrendChanges) return;
     const expenseClass = analyticsPctClass(report && report.trendChange ? report.trendChange.expensePct : 0, false);
     const incomeClass = analyticsPctClass(report && report.trendChange ? report.trendChange.incomePct : 0, true);
     els.analyticsTrendChanges.innerHTML = `
       <div class="analytics-delta-card">
-        <div class="analytics-delta-label">Изменение расходов</div>
+        <div class="analytics-delta-label">Расходы к прошлому периоду</div>
         <div class="analytics-delta-value ${expenseClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.expensePct : null)}
         </div>
       </div>
       <div class="analytics-delta-card">
-        <div class="analytics-delta-label">Изменение доходов</div>
+        <div class="analytics-delta-label">Доходы к прошлому периоду</div>
         <div class="analytics-delta-value ${incomeClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.incomePct : null)}
         </div>
@@ -2291,105 +2355,122 @@
 
   function renderAnalyticsComparisonCard(report) {
     if (!els.analyticsComparisonCard) return;
-    if (!report || !report.comparison) {
+    const cmp = report && report.comparison ? report.comparison : null;
+    if (!cmp || !cmp.metrics) {
       els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml("Нет данных для сравнения периодов.");
       return;
     }
-    const cmp = report.comparison;
-    const current = cmp.current || { expense: 0, income: 0, balance: 0 };
-    const previous = cmp.previous || { expense: 0, income: 0, balance: 0 };
     const metrics = cmp.metrics || {};
-    const renderDiffRow = (label, key) => {
-      const metric = metrics[key] || { deltaAbs: 0, deltaPct: 0, direction: "neutral" };
+
+    const rowHtml = (label, key, showPct) => {
+      const metric = metrics[key] || { deltaAbs: 0, deltaPct: null, direction: "neutral" };
       const cls = analyticsDirectionClass(metric.direction);
+      const pctPart = showPct
+        ? `<span class="analytics-compact-delta-pct ${cls}">(${fmtSignedPercentNullable(metric.deltaPct)})</span>`
+        : "";
       return `
-        <div class="analytics-diff-row">
-          <span class="analytics-diff-name">${label}</span>
-          <span class="analytics-diff-abs ${cls}">${fmtMoney(Number(metric.deltaAbs || 0), true)}</span>
-          <span class="analytics-diff-pct ${cls}">${fmtSignedPercentNullable(metric.deltaPct)}</span>
+        <div class="analytics-compact-delta-row">
+          <span class="analytics-compact-delta-name">${label}</span>
+          <span class="analytics-compact-delta-values">
+            <span class="analytics-compact-delta-money ${cls}">${fmtMoney(Number(metric.deltaAbs || 0), true)}</span>
+            ${pctPart}
+          </span>
         </div>
       `;
     };
+
     els.analyticsComparisonCard.innerHTML = `
-      <div class="analytics-compare-col">
-        <h3 class="analytics-compare-title">Текущий период</h3>
-        <div class="analytics-kv">
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Расходы</span><span class="analytics-kv-val">${fmtMoney(current.expense || 0, false)}</span></div>
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Доходы</span><span class="analytics-kv-val">${fmtMoney(current.income || 0, false)}</span></div>
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Баланс</span><span class="analytics-kv-val">${fmtMoney(current.balance || 0, true)}</span></div>
-        </div>
-      </div>
-      <div class="analytics-compare-col">
-        <h3 class="analytics-compare-title">Прошлый период</h3>
-        <div class="analytics-kv">
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Расходы</span><span class="analytics-kv-val">${fmtMoney(previous.expense || 0, false)}</span></div>
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Доходы</span><span class="analytics-kv-val">${fmtMoney(previous.income || 0, false)}</span></div>
-          <div class="analytics-kv-row"><span class="analytics-kv-key">Баланс</span><span class="analytics-kv-val">${fmtMoney(previous.balance || 0, true)}</span></div>
-        </div>
-      </div>
-      <div class="analytics-diff-block" style="grid-column: 1 / -1;">
-        ${renderDiffRow("Расходы", "expense")}
-        ${renderDiffRow("Доходы", "income")}
-        ${renderDiffRow("Баланс", "balance")}
+      <div class="analytics-compact-delta-card">
+        ${rowHtml("Расходы", "expense", true)}
+        ${rowHtml("Доходы", "income", true)}
+        ${rowHtml("Баланс", "balance", false)}
       </div>
     `;
   }
 
   function renderAnalyticsTopCategories(report) {
     if (!els.analyticsTopCategories) return;
-    const rows = Array.isArray(report && report.topCategories) ? report.topCategories : [];
-    if (!rows.length) {
+    const focus = report && report.categoryFocus ? report.categoryFocus : null;
+    const primary = focus && focus.primary ? focus.primary : null;
+    const secondary = Array.isArray(focus && focus.secondary) ? focus.secondary : [];
+    if (!primary) {
       els.analyticsTopCategories.innerHTML = analyticsEmptyHtml("Нет расходов за выбранный период.");
       return;
     }
-    els.analyticsTopCategories.innerHTML = rows
-      .map((row, idx) => {
-        const trendClass = analyticsDirectionClass(row.trendDirection);
-        let trendLabel = fmtSignedPercentNullable(row.deltaPct);
-        if (row.deltaPct === null && Number(row.previousAmount || 0) === 0 && Number(row.amount || 0) > 0) {
-          trendLabel = "Новая";
-        }
-        return `
-          <div class="analytics-row">
-            <div class="analytics-row-head">
-              <div class="analytics-row-title">${idx + 1}. ${escapeHtml(row.label || "Прочее")}</div>
-              <div class="analytics-row-value">${fmtMoney(row.amount || 0, false)}</div>
+
+    const primaryTrendClass = analyticsDirectionClass(primary.trendDirection);
+    const primaryTrendText = primary.deltaPct === null ? "" : fmtSignedPercentNullable(primary.deltaPct);
+
+    els.analyticsTopCategories.innerHTML = `
+      <div class="analytics-focus-card">
+        <div class="analytics-focus-title">
+          Основной источник расходов — ${escapeHtml(primary.label || "Прочее")} (${Math.round(Number(primary.sharePct || 0))}%)
+        </div>
+        <div class="analytics-focus-value">${fmtMoney(primary.amount || 0, false)}</div>
+        <div class="analytics-focus-meta">
+          ${primaryTrendText ? `<span class="analytics-chip ${primaryTrendClass}">${primaryTrendText}</span>` : ""}
+          <span class="analytics-chip">${fmtMoney(primary.deltaAbs || 0, true)} к прошлому периоду</span>
+        </div>
+      </div>
+      ${secondary.length ? `
+        <div class="analytics-compact-list">
+          ${secondary.map((row) => `
+            <div class="analytics-compact-row">
+              <div class="analytics-compact-row-main">
+                <span class="analytics-compact-row-name">${escapeHtml(row.label || "Прочее")}</span>
+                <span class="analytics-compact-row-share">${Math.round(Number(row.sharePct || 0))}%</span>
+              </div>
+              <div class="analytics-compact-row-side">${fmtMoney(row.amount || 0, false)}</div>
             </div>
-            <div class="analytics-row-meta">
-              <span class="analytics-chip">${Math.round(Number(row.sharePct || 0))}% от расходов</span>
-              <span class="analytics-chip ${trendClass}">${trendLabel}</span>
-              <span class="analytics-chip ${trendClass}">${fmtMoney(row.deltaAbs || 0, true)}</span>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+          `).join("")}
+        </div>
+      ` : ""}
+    `;
   }
 
   function renderAnalyticsParticipants(report) {
     if (!els.analyticsParticipants) return;
     const participants = report && report.participants ? report.participants : { rows: [] };
     const rows = Array.isArray(participants.rows) ? participants.rows : [];
+    const familyBehavior = report && report.familyBehavior ? report.familyBehavior : null;
     if (!rows.length) {
       els.analyticsParticipants.innerHTML = analyticsEmptyHtml("Нет данных по участникам для выбранного периода.");
       return;
     }
-    els.analyticsParticipants.innerHTML = rows
-      .map((row) => `
-        <div class="analytics-row">
+    const leader = (familyBehavior && familyBehavior.leader) || rows[0];
+    const dominant = Boolean(familyBehavior && familyBehavior.dominant);
+    const statement = String((familyBehavior && familyBehavior.statement) || "").trim();
+    const others = (familyBehavior && Array.isArray(familyBehavior.others) ? familyBehavior.others : rows.slice(1)).slice(0, 2);
+
+    els.analyticsParticipants.innerHTML = `
+      <div class="analytics-family-card ${dominant ? "dominant" : ""}">
+        ${statement ? `<div class="analytics-family-statement">${escapeHtml(statement)}</div>` : ""}
+        <div class="analytics-family-leader">
           <div class="analytics-row-head">
-            <div class="analytics-row-title">${escapeHtml(row.name || "Участник")}</div>
-            <div class="analytics-row-value">${fmtMoney(row.expense || 0, false)}</div>
+            <div class="analytics-row-title">${escapeHtml((leader && leader.name) || "Участник")}</div>
+            <div class="analytics-row-value">${fmtMoney((leader && leader.expense) || 0, false)}</div>
           </div>
-          <div class="analytics-row-meta">
-            <span class="analytics-chip">${Math.round(Number(row.sharePct || 0))}% семейных расходов</span>
-            <span class="analytics-chip">Средний чек ${fmtMoney(row.avgCheck || 0, false)}</span>
-            <span class="analytics-chip">${Number(row.txCount || 0)} транз.</span>
-            ${row.isTopSpender ? '<span class="analytics-chip top">Лидер расходов</span>' : ""}
+          <div class="analytics-family-meta">
+            <span>${Math.round(Number((leader && leader.sharePct) || 0))}% семейных расходов</span>
+            <span>Средний чек ${fmtMoney((leader && leader.avgCheck) || 0, false)}</span>
+            <span>${Number((leader && leader.txCount) || 0)} транз.</span>
           </div>
         </div>
-      `)
-      .join("");
+      </div>
+      ${others.length ? `
+        <div class="analytics-compact-list">
+          ${others.map((row) => `
+            <div class="analytics-compact-row">
+              <div class="analytics-compact-row-main">
+                <span class="analytics-compact-row-name">${escapeHtml(row.name || "Участник")}</span>
+                <span class="analytics-compact-row-share">${Math.round(Number(row.sharePct || 0))}%</span>
+              </div>
+              <div class="analytics-compact-row-side">${fmtMoney(row.expense || 0, false)}</div>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+    `;
   }
 
   function renderAnalyticsInsights(report) {
@@ -2403,38 +2484,51 @@
     function insightIcon(item) {
       if (item.key === "max-day") return "calendar-range";
       if (item.key === "avg-day-expense") return "gauge";
-      if (item.key === "max-transaction") return "wallet";
       return item.kind === "positive" ? "trending-down" : "trending-up";
     }
 
-    function insightText(item) {
-      if (item.key === "category-growth" || item.key === "category-drop") {
-        const pct = fmtSignedPercentNullable(item.pct);
-        if (item.key === "category-drop") {
-          return `${escapeHtml(item.value || "Категория")}: меньше на ${fmtMoney(item.amount || 0, false)}, ${pct} к прошлому периоду.`;
-        }
-        return `${escapeHtml(item.value || "Категория")}: ${fmtMoney(item.amount || 0, true)}, ${pct} к прошлому периоду.`;
+    function insightTitle(item) {
+      if (item.key === "category-growth") {
+        return `Расходы на "${item.categoryLabel || "категорию"}" выросли`;
+      }
+      if (item.key === "category-drop") {
+        return `Расходы на "${item.categoryLabel || "категорию"}" снизились`;
       }
       if (item.key === "max-day") {
-        return `${formatDateLabel(item.value)} — ${fmtMoney(item.amount || 0, false)} расходов.`;
+        return `${formatDateLabel(item.dateIso)} — самый затратный день`;
       }
       if (item.key === "avg-day-expense") {
-        return `${fmtMoney(item.amount || 0, false)} в среднем за день в выбранном периоде.`;
+        return "В среднем вы тратите в день";
       }
-      if (item.key === "max-transaction") {
-        const kindLabel = item.txKind === "income" ? "доход" : "расход";
-        return `${escapeHtml(item.value || item.categoryLabel || "Транзакция")} • ${kindLabel} ${fmtMoney(item.amount || 0, false)}.`;
+      return String(item.title || "Инсайт");
+    }
+
+    function insightText(item) {
+      if (item.key === "category-growth") {
+        const pctText = fmtSignedPercentNullable(item.pct);
+        return `${fmtMoney(item.amount || 0, true)} (${pctText}) к прошлому периоду.`;
+      }
+      if (item.key === "category-drop") {
+        const pctText = fmtSignedPercentNullable(item.pct);
+        return `Меньше на ${fmtMoney(item.amount || 0, false)} (${pctText}) к прошлому периоду.`;
+      }
+      if (item.key === "max-day") {
+        return `${fmtMoney(item.amount || 0, false)} расходов.`;
+      }
+      if (item.key === "avg-day-expense") {
+        return `${fmtMoney(item.amount || 0, false)} в день.`;
       }
       return "";
     }
 
     els.analyticsInsights.innerHTML = insights
+      .slice(0, 3)
       .map((item) => `
         <div class="analytics-insight-card">
           <div class="analytics-insight-icon ${escapeHtml(item.kind || "neutral")}">${lucideSvg(insightIcon(item), { width: 16, height: 16 })}</div>
           <div>
-            <div class="analytics-insight-title">${escapeHtml(item.title || "Инсайт")}</div>
-            <div class="analytics-insight-text">${insightText(item)}</div>
+            <div class="analytics-insight-title">${escapeHtml(insightTitle(item))}</div>
+            <div class="analytics-insight-text">${escapeHtml(insightText(item))}</div>
           </div>
         </div>
       `)
@@ -2444,6 +2538,8 @@
   function renderAnalyticsPageEmpty(message) {
     if (els.balanceTrendSvg) els.balanceTrendSvg.innerHTML = "";
     if (els.balanceTrendLegend) els.balanceTrendLegend.innerHTML = "";
+    if (els.analyticsHero) els.analyticsHero.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsForecast) els.analyticsForecast.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsTrendChanges) els.analyticsTrendChanges.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsComparisonCard) els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsTopCategories) els.analyticsTopCategories.innerHTML = analyticsEmptyHtml(message);
@@ -2456,6 +2552,8 @@
       renderAnalyticsPageEmpty("Нет данных за выбранный период.");
       return;
     }
+    renderAnalyticsHero(report);
+    renderAnalyticsForecast(report);
     renderAnalyticsTrendChanges(report);
     renderAnalyticsComparisonCard(report);
     renderAnalyticsTopCategories(report);
