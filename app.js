@@ -1053,7 +1053,7 @@
     });
     if (els.profileDetailRatingMeta) {
       els.profileDetailRatingMeta.textContent =
-        rating > 0 ? `Ваша оценка: ${rating}/5` : "Можно оставить комментарий (необязательно).";
+        rating > 0 ? `Выбрано: ${rating}/5` : "Можно оставить комментарий (необязательно).";
     }
   }
 
@@ -1112,6 +1112,12 @@
       }
       els.profileDetailReviewCommentInput.value = String(state.profile.reviewComment || "");
       setProfileReviewRating(state.profile.reviewRating || 0);
+      const ratingWrap = els.profileDetailRatingStars
+        ? els.profileDetailRatingStars.closest(".profile-rating-wrap")
+        : null;
+      if (ratingWrap) {
+        ratingWrap.classList.toggle("hidden", hasExisting && !state.profile.reviewEditMode);
+      }
       els.profileDetailRatingStars.classList.toggle("hidden", hasExisting && !state.profile.reviewEditMode);
       const reviewCommentField = els.profileDetailReviewCommentInput.closest(".field");
       if (reviewCommentField) {
