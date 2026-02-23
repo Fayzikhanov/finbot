@@ -164,13 +164,7 @@
 
         <section class="panel profile-menu-panel">
           <div class="profile-menu-list">
-            <button
-              id="profileInfoToggleBtn"
-              class="profile-row-btn"
-              type="button"
-              aria-expanded="false"
-              aria-controls="profileInfoPanel"
-            >
+            <button id="profileInfoBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
                 <i data-lucide="badge-info"></i>
               </span>
@@ -178,44 +172,10 @@
                 <span class="profile-row-title">Личная информация</span>
                 <span id="profileInfoMeta" class="profile-row-meta">Имя, username и контакты</span>
               </span>
-              <i data-lucide="chevron-down" class="profile-row-chevron"></i>
+              <i data-lucide="chevron-right" class="profile-row-chevron static"></i>
             </button>
-            <div id="profileInfoPanel" class="profile-subpanel hidden">
-              <div class="profile-info-list">
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Имя</span>
-                  <span id="profileInfoName" class="profile-info-value">—</span>
-                </div>
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Username</span>
-                  <span id="profileInfoUsername" class="profile-info-value">—</span>
-                </div>
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Telegram ID</span>
-                  <span id="profileInfoTelegramId" class="profile-info-value">—</span>
-                </div>
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Телефон</span>
-                  <span id="profileInfoPhone" class="profile-info-value">—</span>
-                </div>
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Email</span>
-                  <span id="profileInfoEmail" class="profile-info-value">—</span>
-                </div>
-                <div class="profile-info-item">
-                  <span class="profile-info-label">Дата рождения</span>
-                  <span id="profileInfoBirthDate" class="profile-info-value">—</span>
-                </div>
-              </div>
-            </div>
 
-            <button
-              id="profileSettingsToggleBtn"
-              class="profile-row-btn"
-              type="button"
-              aria-expanded="false"
-              aria-controls="profileSettingsPanel"
-            >
+            <button id="profileSettingsBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
                 <i data-lucide="settings-2"></i>
               </span>
@@ -223,38 +183,10 @@
                 <span class="profile-row-title">Настройки</span>
                 <span id="profileSettingsMeta" class="profile-row-meta">Язык и валюта</span>
               </span>
-              <i data-lucide="chevron-down" class="profile-row-chevron"></i>
+              <i data-lucide="chevron-right" class="profile-row-chevron static"></i>
             </button>
-            <div id="profileSettingsPanel" class="profile-subpanel hidden">
-              <div class="profile-settings-grid">
-                <label class="field">
-                  <span class="field-label">Выбор валюты</span>
-                  <select id="profileCurrencySelect" class="field-input field-select">
-                    <option value="UZS">UZS (сум)</option>
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="RUB">RUB (₽)</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span class="field-label">Выбор языка</span>
-                  <select id="profileLanguageSelect" class="field-input field-select">
-                    <option value="ru">Русский</option>
-                    <option value="uz">O'zbekcha</option>
-                    <option value="en">English</option>
-                  </select>
-                </label>
-              </div>
-              <p class="profile-hint">Настройки сохраняются для вашего профиля.</p>
-            </div>
 
-            <button
-              id="profileSupportToggleBtn"
-              class="profile-row-btn"
-              type="button"
-              aria-expanded="false"
-              aria-controls="profileSupportPanel"
-            >
+            <button id="profileSupportBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
                 <i data-lucide="life-buoy"></i>
               </span>
@@ -262,21 +194,8 @@
                 <span class="profile-row-title">Поддержка</span>
                 <span id="profileSupportMeta" class="profile-row-meta">Связь с разработчиком и баг-репорт</span>
               </span>
-              <i data-lucide="chevron-down" class="profile-row-chevron"></i>
+              <i data-lucide="chevron-right" class="profile-row-chevron static"></i>
             </button>
-            <div id="profileSupportPanel" class="profile-subpanel hidden">
-              <div class="profile-action-list">
-                <button id="profileContactDeveloperBtn" class="profile-action-btn" type="button">
-                  <i data-lucide="message-square"></i>
-                  <span>Связь с разработчиком</span>
-                </button>
-                <button id="profileReportBugBtn" class="profile-action-btn" type="button">
-                  <i data-lucide="bug"></i>
-                  <span>Сообщить об ошибке</span>
-                </button>
-              </div>
-              <p class="profile-hint">Откроется чат с ботом и подсказка, какую команду отправить.</p>
-            </div>
 
             <button id="profileRateBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
@@ -291,6 +210,164 @@
           </div>
         </section>
       </main>
+
+      <main id="profileDetailScreen" class="screen hidden">
+        <section class="panel profile-detail-shell">
+          <div class="profile-detail-header">
+            <button id="profileDetailBackBtn" class="icon-btn profile-back-btn" type="button" aria-label="Назад">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <div class="profile-detail-title-wrap">
+              <h2 id="profileDetailTitle">Профиль</h2>
+              <p id="profileDetailSubtitle">Редактирование</p>
+            </div>
+          </div>
+
+          <div class="profile-detail-body">
+            <section id="profileDetailInfoPage" class="profile-detail-page hidden">
+              <div class="profile-info-list">
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Username (Telegram)</span>
+                  <span id="profileDetailInfoUsername" class="profile-info-value">—</span>
+                </div>
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Telegram ID</span>
+                  <span id="profileDetailInfoTelegramId" class="profile-info-value">—</span>
+                </div>
+              </div>
+              <div class="profile-settings-grid">
+                <label class="field">
+                  <span class="field-label">Имя для профиля</span>
+                  <input
+                    id="profileDetailDisplayNameInput"
+                    class="field-input"
+                    type="text"
+                    maxlength="64"
+                    placeholder="Например: Файз"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">Телефон</span>
+                  <input
+                    id="profileDetailPhoneInput"
+                    class="field-input"
+                    type="tel"
+                    maxlength="32"
+                    placeholder="+998 ..."
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">Email</span>
+                  <input
+                    id="profileDetailEmailInput"
+                    class="field-input"
+                    type="email"
+                    maxlength="120"
+                    placeholder="name@example.com"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">Дата рождения</span>
+                  <input id="profileDetailBirthDateInput" class="field-input" type="date" />
+                </label>
+              </div>
+            </section>
+
+            <section id="profileDetailSettingsPage" class="profile-detail-page hidden">
+              <div class="profile-settings-grid">
+                <label class="field">
+                  <span class="field-label">Выбор валюты</span>
+                  <select id="profileDetailCurrencySelect" class="field-input field-select">
+                    <option value="UZS">UZS (сум)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="RUB">RUB (₽)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Выбор языка</span>
+                  <select id="profileDetailLanguageSelect" class="field-input field-select">
+                    <option value="ru">Русский</option>
+                    <option value="uz">O'zbekcha</option>
+                    <option value="en">English</option>
+                  </select>
+                </label>
+              </div>
+              <p class="profile-hint">Настройки применяются к вашему профилю в боте и miniapp.</p>
+            </section>
+
+            <section id="profileDetailSupportPage" class="profile-detail-page hidden">
+              <div class="profile-support-mode">
+                <button
+                  id="profileDetailSupportModeMessageBtn"
+                  class="seg-btn active"
+                  type="button"
+                  data-support-kind="message"
+                >
+                  Связь с разработчиком
+                </button>
+                <button
+                  id="profileDetailSupportModeBugBtn"
+                  class="seg-btn"
+                  type="button"
+                  data-support-kind="bug"
+                >
+                  Сообщить об ошибке
+                </button>
+              </div>
+              <label class="field">
+                <span id="profileDetailSupportMessageLabel" class="field-label">Сообщение</span>
+                <textarea
+                  id="profileDetailSupportMessageInput"
+                  class="field-input profile-textarea"
+                  maxlength="2000"
+                  placeholder="Опишите вопрос или проблему"
+                ></textarea>
+              </label>
+              <p class="profile-hint">
+                Сообщение будет отправлено разработчику прямо из miniapp от имени вашего профиля.
+              </p>
+            </section>
+
+            <section id="profileDetailReviewPage" class="profile-detail-page hidden">
+              <div class="profile-rating-wrap">
+                <p class="profile-rating-label">Поставьте оценку</p>
+                <div id="profileDetailRatingStars" class="profile-rating-stars" role="radiogroup" aria-label="Оценка">
+                  <button class="profile-star-btn" type="button" data-rating="1" aria-label="1 звезда">
+                    <i data-lucide="star"></i>
+                  </button>
+                  <button class="profile-star-btn" type="button" data-rating="2" aria-label="2 звезды">
+                    <i data-lucide="star"></i>
+                  </button>
+                  <button class="profile-star-btn" type="button" data-rating="3" aria-label="3 звезды">
+                    <i data-lucide="star"></i>
+                  </button>
+                  <button class="profile-star-btn" type="button" data-rating="4" aria-label="4 звезды">
+                    <i data-lucide="star"></i>
+                  </button>
+                  <button class="profile-star-btn" type="button" data-rating="5" aria-label="5 звёзд">
+                    <i data-lucide="star"></i>
+                  </button>
+                </div>
+                <p id="profileDetailRatingMeta" class="profile-hint">Можно оставить комментарий (необязательно).</p>
+              </div>
+              <label class="field">
+                <span class="field-label">Комментарий</span>
+                <textarea
+                  id="profileDetailReviewCommentInput"
+                  class="field-input profile-textarea"
+                  maxlength="1000"
+                  placeholder="Что понравилось или что улучшить"
+                ></textarea>
+              </label>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <div id="profileDetailActionsBar" class="profile-detail-actions hidden">
+        <button id="profileDetailSaveBtn" class="primary-btn profile-detail-save-btn" type="button">Сохранить</button>
+      </div>
 
       <main id="placeholderScreen" class="screen hidden">
         <section class="panel placeholder-panel">
