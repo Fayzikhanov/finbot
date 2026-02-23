@@ -649,6 +649,10 @@ body {
   display: grid;
   gap: 8px;
   margin-top: -2px;
+  padding: 8px 10px 10px;
+  border: 1px solid rgba(143, 148, 163, 0.14);
+  border-radius: 14px;
+  background: #fafbff;
 }
 
 .profile-support-photo-row {
@@ -665,22 +669,79 @@ body {
   font-weight: 600;
 }
 
+.profile-attach-btn:disabled {
+  opacity: 0.6;
+  color: #828a9a;
+  border-color: rgba(143, 148, 163, 0.2);
+  background: #f4f5fa;
+}
+
 .profile-photo-meta {
   margin-top: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.profile-photo-limit-note {
+  margin: -2px 2px 0;
+  color: #8a92a2;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.profile-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-photo-item {
+  position: relative;
+  border: 1px solid rgba(143, 148, 163, 0.16);
+  background: #fff;
+  border-radius: 12px;
+  padding: 6px;
+  display: grid;
+  gap: 5px;
+  box-shadow: 0 3px 10px rgba(17, 22, 34, 0.04);
+}
+
+.profile-photo-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 9px;
+  display: block;
+  background: #f1f2f7;
+}
+
+.profile-photo-item-name {
+  font-size: 10px;
+  line-height: 1.25;
+  color: #707888;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 4px;
 }
 
-.profile-photo-preview {
-  width: 92px;
-  height: 92px;
-  max-height: none;
-  object-fit: cover;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: #fff;
-  display: block;
+.profile-photo-remove-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(31, 36, 48, 0.78);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
 }
 
 .profile-rating-wrap {
