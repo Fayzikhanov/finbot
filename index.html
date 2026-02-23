@@ -95,6 +95,47 @@
         </section>
       </main>
 
+      <main id="analyticsScreen" class="screen hidden">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Динамика расходов и доходов</h2>
+          </div>
+          <div class="balance-trend-card">
+            <svg id="balanceTrendSvg" viewBox="0 0 320 160" preserveAspectRatio="none" aria-label="График динамики"></svg>
+            <div id="balanceTrendLegend" class="trend-legend"></div>
+          </div>
+          <div id="analyticsTrendChanges" class="analytics-delta-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Сравнение периодов</h2>
+          </div>
+          <div id="analyticsComparisonCard" class="analytics-compare-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Топ 3 категории</h2>
+          </div>
+          <div id="analyticsTopCategories" class="analytics-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Семейная аналитика</h2>
+          </div>
+          <div id="analyticsParticipants" class="analytics-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Инсайты</h2>
+          </div>
+          <div id="analyticsInsights" class="analytics-insights"></div>
+        </section>
+      </main>
+
       <main id="addScreen" class="screen hidden">
         <section class="panel add-panel">
           <div id="addModeRow" class="add-mode">
@@ -421,8 +462,8 @@
           <span class="txt">Транзакции</span>
         </button>
         <button id="navConverter" class="nav-btn" type="button">
-          <i data-lucide="arrow-left-right"></i>
-          <span class="txt">Конвертер</span>
+          <i data-lucide="chart-no-axes-column"></i>
+          <span class="txt">Аналитика</span>
         </button>
         <button id="navProfile" class="nav-btn" type="button">
           <i data-lucide="user"></i>
@@ -475,6 +516,7 @@
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="./utils/analytics.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
