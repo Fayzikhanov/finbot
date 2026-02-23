@@ -51,11 +51,12 @@
       loading: false,
       saving: false,
       data: null,
-      sections: {
-        info: false,
-        settings: false,
-        support: false,
-      },
+      detailPage: "",
+      supportKind: "message",
+      supportMessage: "",
+      reviewRating: 0,
+      reviewComment: "",
+      reviewLoadedFromServer: false,
     },
   };
 
@@ -96,32 +97,44 @@
     transactionsScreen: document.getElementById("transactionsScreen"),
     addScreen: document.getElementById("addScreen"),
     profileScreen: document.getElementById("profileScreen"),
+    profileDetailScreen: document.getElementById("profileDetailScreen"),
     placeholderScreen: document.getElementById("placeholderScreen"),
     placeholderTitle: document.getElementById("placeholderTitle"),
     profileAvatarImg: document.getElementById("profileAvatarImg"),
     profileAvatarFallback: document.getElementById("profileAvatarFallback"),
     profileDisplayName: document.getElementById("profileDisplayName"),
     profileSubtitle: document.getElementById("profileSubtitle"),
-    profileInfoToggleBtn: document.getElementById("profileInfoToggleBtn"),
-    profileSettingsToggleBtn: document.getElementById("profileSettingsToggleBtn"),
-    profileSupportToggleBtn: document.getElementById("profileSupportToggleBtn"),
-    profileInfoPanel: document.getElementById("profileInfoPanel"),
-    profileSettingsPanel: document.getElementById("profileSettingsPanel"),
-    profileSupportPanel: document.getElementById("profileSupportPanel"),
+    profileInfoBtn: document.getElementById("profileInfoBtn"),
+    profileSettingsBtn: document.getElementById("profileSettingsBtn"),
+    profileSupportBtn: document.getElementById("profileSupportBtn"),
     profileInfoMeta: document.getElementById("profileInfoMeta"),
     profileSettingsMeta: document.getElementById("profileSettingsMeta"),
     profileSupportMeta: document.getElementById("profileSupportMeta"),
-    profileInfoName: document.getElementById("profileInfoName"),
-    profileInfoUsername: document.getElementById("profileInfoUsername"),
-    profileInfoTelegramId: document.getElementById("profileInfoTelegramId"),
-    profileInfoPhone: document.getElementById("profileInfoPhone"),
-    profileInfoEmail: document.getElementById("profileInfoEmail"),
-    profileInfoBirthDate: document.getElementById("profileInfoBirthDate"),
-    profileCurrencySelect: document.getElementById("profileCurrencySelect"),
-    profileLanguageSelect: document.getElementById("profileLanguageSelect"),
-    profileContactDeveloperBtn: document.getElementById("profileContactDeveloperBtn"),
-    profileReportBugBtn: document.getElementById("profileReportBugBtn"),
     profileRateBtn: document.getElementById("profileRateBtn"),
+    profileDetailActionsBar: document.getElementById("profileDetailActionsBar"),
+    profileDetailBackBtn: document.getElementById("profileDetailBackBtn"),
+    profileDetailTitle: document.getElementById("profileDetailTitle"),
+    profileDetailSubtitle: document.getElementById("profileDetailSubtitle"),
+    profileDetailSaveBtn: document.getElementById("profileDetailSaveBtn"),
+    profileDetailInfoPage: document.getElementById("profileDetailInfoPage"),
+    profileDetailSettingsPage: document.getElementById("profileDetailSettingsPage"),
+    profileDetailSupportPage: document.getElementById("profileDetailSupportPage"),
+    profileDetailReviewPage: document.getElementById("profileDetailReviewPage"),
+    profileDetailInfoUsername: document.getElementById("profileDetailInfoUsername"),
+    profileDetailInfoTelegramId: document.getElementById("profileDetailInfoTelegramId"),
+    profileDetailDisplayNameInput: document.getElementById("profileDetailDisplayNameInput"),
+    profileDetailPhoneInput: document.getElementById("profileDetailPhoneInput"),
+    profileDetailEmailInput: document.getElementById("profileDetailEmailInput"),
+    profileDetailBirthDateInput: document.getElementById("profileDetailBirthDateInput"),
+    profileDetailCurrencySelect: document.getElementById("profileDetailCurrencySelect"),
+    profileDetailLanguageSelect: document.getElementById("profileDetailLanguageSelect"),
+    profileDetailSupportModeMessageBtn: document.getElementById("profileDetailSupportModeMessageBtn"),
+    profileDetailSupportModeBugBtn: document.getElementById("profileDetailSupportModeBugBtn"),
+    profileDetailSupportMessageLabel: document.getElementById("profileDetailSupportMessageLabel"),
+    profileDetailSupportMessageInput: document.getElementById("profileDetailSupportMessageInput"),
+    profileDetailRatingStars: document.getElementById("profileDetailRatingStars"),
+    profileDetailRatingMeta: document.getElementById("profileDetailRatingMeta"),
+    profileDetailReviewCommentInput: document.getElementById("profileDetailReviewCommentInput"),
     addModeTransactionBtn: document.getElementById("addModeTransactionBtn"),
     addModeTransferBtn: document.getElementById("addModeTransferBtn"),
     addKindRow: document.getElementById("addKindRow"),
@@ -789,52 +802,6 @@
     return text || (fallback || "Не указано");
   }
 
-  function updateProfileSectionMeta() {
-    const profileData = state.profile.data || {};
-    const user = profileUserView();
-    const hasPhone = String(profileData.phone || "").trim();
-    const hasEmail = String(profileData.email || "").trim();
-    const contactsCount = [hasPhone, hasEmail].filter(Boolean).length;
-    els.profileInfoMeta.textContent = contactsCount
-      ? `Контактов заполнено: ${contactsCount}`
-      : "Имя, username и контакты";
-
-    const currency = normalizeCurrencyCode(profileData.currency || "UZS");
-    const language = normalizeLanguageCode(profileData.language || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
-      ? tg.initDataUnsafe.user.language_code
-      : "ru"));
-    els.profileSettingsMeta.textContent = `${currencyLabels[currency]} • ${languageLabels[language]}`;
-
-    const hasBotUsername = Boolean(safeTgReceiverUsername());
-    els.profileSupportMeta.textContent = hasBotUsername
-      ? "Чат с ботом и отправка команды /support"
-      : "Подсказка по команде /support";
-
-    if (els.profileInfoName) {
-      const nameForInfo =
-        String(profileData.display_name || "").trim() ||
-        String(profileData.member_name || "").trim() ||
-        user.fullName ||
-        "Не указано";
-      els.profileInfoName.textContent = nameForInfo;
-    }
-    if (els.profileInfoUsername) {
-      els.profileInfoUsername.textContent = user.username ? `@${user.username}` : "Не указано";
-    }
-    if (els.profileInfoTelegramId) {
-      els.profileInfoTelegramId.textContent = user.telegramId ? String(user.telegramId) : "Не указано";
-    }
-    if (els.profileInfoPhone) {
-      els.profileInfoPhone.textContent = profileFieldValue(profileData.phone);
-    }
-    if (els.profileInfoEmail) {
-      els.profileInfoEmail.textContent = profileFieldValue(profileData.email);
-    }
-    if (els.profileInfoBirthDate) {
-      els.profileInfoBirthDate.textContent = profileFieldValue(profileData.birth_date);
-    }
-  }
-
   function renderProfileHeader() {
     const user = profileUserView();
     els.profileDisplayName.textContent = profileDisplayNameValue();
@@ -851,52 +818,185 @@
     }
   }
 
-  function setProfileSectionOpen(section, isOpen) {
-    const normalized =
-      section === "settings" || section === "support" || section === "info" ? section : "info";
-    state.profile.sections[normalized] = Boolean(isOpen);
+  function normalizeProfileData(raw) {
+    const local = readLocalProfileSettings();
+    const tgUser = safeTgUser();
+    const base = raw && typeof raw === "object" ? raw : {};
+    const out = Object.assign({}, base);
+    out.language = normalizeLanguageCode(out.language || local.language || (tgUser && tgUser.language_code) || "ru");
+    out.currency = normalizeCurrencyCode(out.currency || local.currency || "UZS");
+    out.display_name = String(out.display_name || "");
+    out.phone = String(out.phone || "");
+    out.email = String(out.email || "");
+    out.birth_date = String(out.birth_date || "");
+    out.member_name = String(out.member_name || "");
+    if (out.latest_review && typeof out.latest_review === "object") {
+      const rating = Number(out.latest_review.rating || 0);
+      out.latest_review = {
+        rating: rating >= 1 && rating <= 5 ? rating : 0,
+        comment: String(out.latest_review.comment || ""),
+        created_at: String(out.latest_review.created_at || ""),
+      };
+    } else {
+      out.latest_review = null;
+    }
+    return out;
+  }
 
-    const map = {
-      info: [els.profileInfoToggleBtn, els.profileInfoPanel],
-      settings: [els.profileSettingsToggleBtn, els.profileSettingsPanel],
-      support: [els.profileSupportToggleBtn, els.profileSupportPanel],
-    };
-    Object.keys(map).forEach((key) => {
-      const opened = key === normalized ? Boolean(isOpen) : Boolean(state.profile.sections[key]);
-      const [btn, panel] = map[key];
-      if (!btn || !panel) return;
-      btn.setAttribute("aria-expanded", opened ? "true" : "false");
-      panel.classList.toggle("hidden", !opened);
+  function persistLocalProfileSettingsFromData() {
+    const profileData = normalizeProfileData(state.profile.data || {});
+    state.profile.data = profileData;
+    writeLocalProfileSettings({
+      language: profileData.language,
+      currency: profileData.currency,
     });
   }
 
-  function toggleProfileSection(section) {
-    const key = section === "settings" || section === "support" ? section : "info";
-    const next = !state.profile.sections[key];
-    setProfileSectionOpen(key, next);
-  }
-
-  function syncProfileSelectControls() {
-    const profileData = state.profile.data || {};
-    const local = readLocalProfileSettings();
-    const tgLang = safeTgUser() && safeTgUser().language_code ? safeTgUser().language_code : "ru";
-    const currency = normalizeCurrencyCode(profileData.currency || local.currency || "UZS");
-    const language = normalizeLanguageCode(profileData.language || local.language || tgLang || "ru");
-    els.profileCurrencySelect.value = currency;
-    els.profileLanguageSelect.value = language;
-    profileData.currency = currency;
-    profileData.language = language;
+  function updateProfileSectionMeta() {
+    const profileData = normalizeProfileData(state.profile.data || {});
     state.profile.data = profileData;
-    updateProfileSectionMeta();
+    const hasPhone = String(profileData.phone || "").trim();
+    const hasEmail = String(profileData.email || "").trim();
+    const contactsCount = [hasPhone, hasEmail].filter(Boolean).length;
+    els.profileInfoMeta.textContent = contactsCount
+      ? `Контактов заполнено: ${contactsCount}`
+      : "Имя, username и контакты";
+    els.profileSettingsMeta.textContent = `${currencyLabels[profileData.currency]} • ${languageLabels[profileData.language]}`;
+    els.profileSupportMeta.textContent = "Связь с разработчиком и баг-репорт";
+
+    const latestReview = profileData.latest_review;
+    if (latestReview && Number(latestReview.rating || 0) >= 1) {
+      els.profileRateBtn.querySelector(".profile-row-meta").textContent = `Последняя оценка: ${latestReview.rating}/5`;
+    } else {
+      els.profileRateBtn.querySelector(".profile-row-meta").textContent = "Оставить оценку и отзыв";
+    }
   }
 
   function renderProfileScreen() {
     if (!els.profileScreen) return;
     renderProfileHeader();
-    syncProfileSelectControls();
-    setProfileSectionOpen("info", Boolean(state.profile.sections.info));
-    setProfileSectionOpen("settings", Boolean(state.profile.sections.settings));
-    setProfileSectionOpen("support", Boolean(state.profile.sections.support));
+    updateProfileSectionMeta();
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
+  function profileDetailPageConfig(page) {
+    if (page === "settings") {
+      return {
+        title: "Настройки",
+        subtitle: "Язык и валюта",
+        actionLabel: "Сохранить",
+      };
+    }
+    if (page === "support") {
+      return {
+        title: "Поддержка",
+        subtitle: "Связь с разработчиком и ошибки",
+        actionLabel: "Отправить",
+      };
+    }
+    if (page === "review") {
+      return {
+        title: "Оценить бота",
+        subtitle: "Оценка и комментарий",
+        actionLabel: "Отправить оценку",
+      };
+    }
+    return {
+      title: "Личная информация",
+      subtitle: "Ваши данные профиля",
+      actionLabel: "Сохранить",
+    };
+  }
+
+  function setProfileSupportKind(kind) {
+    state.profile.supportKind = kind === "bug" ? "bug" : "message";
+    const isBug = state.profile.supportKind === "bug";
+    els.profileDetailSupportModeMessageBtn.classList.toggle("active", !isBug);
+    els.profileDetailSupportModeBugBtn.classList.toggle("active", isBug);
+    els.profileDetailSupportMessageLabel.textContent = isBug ? "Описание ошибки" : "Сообщение разработчику";
+    els.profileDetailSupportMessageInput.placeholder = isBug
+      ? "Что произошло, как повторить, что ожидали увидеть"
+      : "Напишите сообщение разработчику";
+  }
+
+  function setProfileReviewRating(value) {
+    const rating = Math.max(0, Math.min(5, Number(value || 0) || 0));
+    state.profile.reviewRating = rating;
+    const starButtons = els.profileDetailRatingStars
+      ? Array.from(els.profileDetailRatingStars.querySelectorAll("[data-rating]"))
+      : [];
+    starButtons.forEach((btn) => {
+      const starValue = Number(btn.dataset.rating || 0);
+      btn.classList.toggle("active", starValue > 0 && starValue <= rating);
+      btn.setAttribute("aria-checked", starValue === rating ? "true" : "false");
+    });
+    if (els.profileDetailRatingMeta) {
+      els.profileDetailRatingMeta.textContent =
+        rating > 0 ? `Ваша оценка: ${rating}/5` : "Можно оставить комментарий (необязательно).";
+    }
+  }
+
+  function syncProfileDetailInputsFromState() {
+    const profileData = normalizeProfileData(state.profile.data || {});
+    state.profile.data = profileData;
+    const user = profileUserView();
+    const page = state.profile.detailPage || "";
+
+    if (page === "info") {
+      els.profileDetailInfoUsername.textContent = user.username ? `@${user.username}` : "Не указано";
+      els.profileDetailInfoTelegramId.textContent = user.telegramId ? String(user.telegramId) : "Не указано";
+      els.profileDetailDisplayNameInput.value = String(profileData.display_name || "");
+      els.profileDetailPhoneInput.value = String(profileData.phone || "");
+      els.profileDetailEmailInput.value = String(profileData.email || "");
+      els.profileDetailBirthDateInput.value = String(profileData.birth_date || "");
+      return;
+    }
+
+    if (page === "settings") {
+      els.profileDetailCurrencySelect.value = normalizeCurrencyCode(profileData.currency || "UZS");
+      els.profileDetailLanguageSelect.value = normalizeLanguageCode(profileData.language || "ru");
+      return;
+    }
+
+    if (page === "support") {
+      setProfileSupportKind(state.profile.supportKind || "message");
+      els.profileDetailSupportMessageInput.value = String(state.profile.supportMessage || "");
+      return;
+    }
+
+    if (page === "review") {
+      if (!state.profile.reviewLoadedFromServer) {
+        const latest = profileData.latest_review && typeof profileData.latest_review === "object"
+          ? profileData.latest_review
+          : null;
+        state.profile.reviewRating = Number(latest && latest.rating ? latest.rating : 0);
+        state.profile.reviewComment = String((latest && latest.comment) || "");
+        state.profile.reviewLoadedFromServer = true;
+      }
+      els.profileDetailReviewCommentInput.value = String(state.profile.reviewComment || "");
+      setProfileReviewRating(state.profile.reviewRating || 0);
+    }
+  }
+
+  function renderProfileDetailScreen() {
+    const page = state.profile.detailPage || "";
+    const cfg = profileDetailPageConfig(page);
+    els.profileDetailTitle.textContent = cfg.title;
+    els.profileDetailSubtitle.textContent = cfg.subtitle;
+    els.profileDetailSaveBtn.textContent = cfg.actionLabel;
+
+    els.profileDetailInfoPage.classList.toggle("hidden", page !== "info");
+    els.profileDetailSettingsPage.classList.toggle("hidden", page !== "settings");
+    els.profileDetailSupportPage.classList.toggle("hidden", page !== "support");
+    els.profileDetailReviewPage.classList.toggle("hidden", page !== "review");
+
+    syncProfileDetailInputsFromState();
+
+    const isDisabled = state.profile.saving || (page === "review" && Number(state.profile.reviewRating || 0) <= 0);
+    els.profileDetailSaveBtn.disabled = Boolean(isDisabled);
+
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
     }
@@ -914,102 +1014,194 @@
       if (payload && typeof payload.member_name === "string") {
         profileData.member_name = payload.member_name;
       }
-      const local = readLocalProfileSettings();
-      state.profile.data = Object.assign({}, local, profileData);
+      if (payload && payload.latest_review && typeof payload.latest_review === "object") {
+        profileData.latest_review = payload.latest_review;
+      }
+      state.profile.data = normalizeProfileData(profileData);
+      persistLocalProfileSettingsFromData();
       state.profile.loaded = true;
+      state.profile.reviewLoadedFromServer = false;
       renderProfileScreen();
+      if (state.screen === "profile-detail") {
+        renderProfileDetailScreen();
+      }
     } catch (_err) {
-      const local = readLocalProfileSettings();
-      state.profile.data = Object.assign({}, state.profile.data || {}, local);
+      state.profile.data = normalizeProfileData(state.profile.data || {});
       state.profile.loaded = true;
       renderProfileScreen();
+      if (state.screen === "profile-detail") {
+        renderProfileDetailScreen();
+      }
       showToast("Профиль загружен частично (без сервера)");
     } finally {
       state.profile.loading = false;
     }
   }
 
-  async function saveProfileSettings(changes) {
-    const next = Object.assign({}, state.profile.data || {}, changes || {});
-    next.language = normalizeLanguageCode(next.language || "ru");
-    next.currency = normalizeCurrencyCode(next.currency || "UZS");
+  async function saveProfileData(changes, successText) {
+    const next = normalizeProfileData(Object.assign({}, state.profile.data || {}, changes || {}));
     state.profile.data = next;
-    writeLocalProfileSettings({
-      language: next.language,
-      currency: next.currency,
-    });
+    persistLocalProfileSettingsFromData();
     renderProfileScreen();
+    renderProfileDetailScreen();
 
     if (state.profile.saving) return;
     state.profile.saving = true;
+    renderProfileDetailScreen();
     try {
-      const payload = await postJsonWithFallback("profile", {
-        language: next.language,
-        currency: next.currency,
-      });
+      const payload = await postJsonWithFallback("profile", changes || {});
       const profileData = payload && payload.profile && typeof payload.profile === "object" ? payload.profile : {};
       if (payload && typeof payload.member_name === "string") {
         profileData.member_name = payload.member_name;
       }
-      state.profile.data = Object.assign({}, state.profile.data || {}, profileData);
-      writeLocalProfileSettings({
-        language: normalizeLanguageCode(state.profile.data.language || "ru"),
-        currency: normalizeCurrencyCode(state.profile.data.currency || "UZS"),
-      });
+      if (payload && payload.latest_review && typeof payload.latest_review === "object") {
+        profileData.latest_review = payload.latest_review;
+      }
+      state.profile.data = normalizeProfileData(Object.assign({}, state.profile.data || {}, profileData));
+      persistLocalProfileSettingsFromData();
       renderProfileScreen();
-      showToast("Настройки профиля сохранены");
-    } catch (_err) {
-      showToast("Настройки сохранены локально");
+      renderProfileDetailScreen();
+      showToast(successText || "Сохранено");
+    } catch (err) {
+      console.error("profile save failed", err);
+      showToast("Не удалось сохранить. Попробуйте ещё раз.");
     } finally {
       state.profile.saving = false;
+      renderProfileDetailScreen();
     }
   }
 
-  function openTgBotChatWithSupportHint(mode) {
-    const action = mode === "bug" ? "bug" : "message";
-    const botUsername = safeTgReceiverUsername();
-    const command = "/support";
-    if (tg && typeof tg.HapticFeedback === "object" && tg.HapticFeedback && tg.HapticFeedback.impactOccurred) {
-      try {
-        tg.HapticFeedback.impactOccurred("light");
-      } catch (_err) {
-        // ignore haptic failures
-      }
-    }
-    if (botUsername) {
-      const url = `https://t.me/${botUsername}`;
-      if (tg && typeof tg.openTelegramLink === "function") {
-        tg.openTelegramLink(url);
-      } else {
-        window.open(url, "_blank", "noopener");
-      }
-      showToast(
-        action === "bug"
-          ? "Открыл чат с ботом. Отправьте /support и выберите «Сообщить об ошибке»"
-          : "Открыл чат с ботом. Отправьте /support и выберите «Написать разработчику»"
-      );
+  async function saveProfilePersonalInfo() {
+    const displayName = String(els.profileDetailDisplayNameInput.value || "").trim();
+    const phone = String(els.profileDetailPhoneInput.value || "").trim();
+    const email = String(els.profileDetailEmailInput.value || "").trim();
+    const birthDate = String(els.profileDetailBirthDateInput.value || "").trim();
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast("Проверьте email");
       return;
     }
-    showToast("Используйте команду /support в чате с ботом");
+    if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+      showToast("Некорректная дата рождения");
+      return;
+    }
+
+    await saveProfileData(
+      {
+        display_name: displayName,
+        phone,
+        email,
+        birth_date: birthDate,
+      },
+      "Личные данные сохранены"
+    );
   }
 
-  function openBotRatingHint() {
-    const botUsername = safeTgReceiverUsername();
-    if (botUsername) {
-      const url = `https://t.me/${botUsername}`;
-      if (tg && typeof tg.openTelegramLink === "function") {
-        tg.openTelegramLink(url);
-      } else {
-        window.open(url, "_blank", "noopener");
-      }
-      showToast("Открыл чат с ботом. Нажмите ⚙️ Настройки Ассистента → Оценить бота");
+  async function saveProfileSettingsPage() {
+    const currency = normalizeCurrencyCode(els.profileDetailCurrencySelect.value);
+    const language = normalizeLanguageCode(els.profileDetailLanguageSelect.value);
+    await saveProfileData({ currency, language }, "Настройки сохранены");
+  }
+
+  async function sendProfileSupport() {
+    const kind = state.profile.supportKind === "bug" ? "bug" : "message";
+    const message = String(els.profileDetailSupportMessageInput.value || "").trim();
+    if (!message) {
+      showToast(kind === "bug" ? "Опишите ошибку" : "Введите сообщение");
       return;
     }
-    showToast("Оценка доступна в чате с ботом: ⚙️ Настройки Ассистента → Оценить бота");
+    if (state.profile.saving) return;
+    state.profile.saving = true;
+    renderProfileDetailScreen();
+    try {
+      await postJsonWithFallback("support", { kind, message });
+      state.profile.supportMessage = "";
+      els.profileDetailSupportMessageInput.value = "";
+      showToast(kind === "bug" ? "Ошибка отправлена разработчику" : "Сообщение отправлено");
+    } catch (err) {
+      console.error("support send failed", err);
+      showToast("Не удалось отправить сообщение");
+    } finally {
+      state.profile.saving = false;
+      renderProfileDetailScreen();
+    }
+  }
+
+  async function submitProfileReview() {
+    const rating = Number(state.profile.reviewRating || 0);
+    const comment = String(els.profileDetailReviewCommentInput.value || "").trim();
+    if (rating < 1 || rating > 5) {
+      showToast("Выберите оценку");
+      return;
+    }
+    if (state.profile.saving) return;
+    state.profile.saving = true;
+    renderProfileDetailScreen();
+    try {
+      const payload = await postJsonWithFallback("review", { rating, comment });
+      const review = payload && payload.review && typeof payload.review === "object" ? payload.review : null;
+      const next = normalizeProfileData(state.profile.data || {});
+      if (review) {
+        next.latest_review = {
+          rating: Number(review.rating || rating),
+          comment: String(review.comment || comment || ""),
+          created_at: String(review.created_at || ""),
+        };
+      }
+      state.profile.data = next;
+      state.profile.reviewComment = comment;
+      state.profile.reviewLoadedFromServer = true;
+      renderProfileScreen();
+      renderProfileDetailScreen();
+      showToast("Спасибо за оценку");
+    } catch (err) {
+      console.error("review submit failed", err);
+      showToast("Не удалось отправить оценку");
+    } finally {
+      state.profile.saving = false;
+      renderProfileDetailScreen();
+    }
+  }
+
+  async function submitProfileDetail() {
+    const page = state.profile.detailPage || "";
+    if (page === "info") {
+      await saveProfilePersonalInfo();
+      return;
+    }
+    if (page === "settings") {
+      await saveProfileSettingsPage();
+      return;
+    }
+    if (page === "support") {
+      state.profile.supportMessage = String(els.profileDetailSupportMessageInput.value || "");
+      await sendProfileSupport();
+      return;
+    }
+    if (page === "review") {
+      state.profile.reviewComment = String(els.profileDetailReviewCommentInput.value || "");
+      await submitProfileReview();
+    }
+  }
+
+  async function openProfileDetail(page) {
+    const normalized =
+      page === "settings" || page === "support" || page === "review" || page === "info" ? page : "info";
+    state.profile.detailPage = normalized;
+    if (normalized === "review") {
+      state.profile.reviewLoadedFromServer = false;
+    }
+    els.navAdd.classList.remove("hidden");
+    showScreen("profile-detail");
+    renderProfileDetailScreen();
+    if (!state.profile.loaded) {
+      await loadProfile();
+    }
   }
 
   async function openProfileScreen() {
     els.screenTitle.textContent = "Профиль";
+    state.profile.detailPage = "";
     els.navAdd.classList.remove("hidden");
     showScreen("profile");
     renderProfileScreen();
@@ -1020,22 +1212,26 @@
     state.screen = name;
     const isAddScreen = name === "add";
     const isProfileScreen = name === "profile";
+    const isProfileDetailScreen = name === "profile-detail";
     els.appRoot.classList.toggle("is-add-screen", isAddScreen);
     els.appRoot.classList.toggle("is-profile-screen", isProfileScreen);
+    els.appRoot.classList.toggle("is-profile-detail-screen", isProfileDetailScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
     els.transactionsScreen.classList.toggle("hidden", name !== "transactions");
     els.addScreen.classList.toggle("hidden", name !== "add");
     els.profileScreen.classList.toggle("hidden", name !== "profile");
+    els.profileDetailScreen.classList.toggle("hidden", name !== "profile-detail");
     els.placeholderScreen.classList.toggle("hidden", name !== "placeholder");
+    els.profileDetailActionsBar.classList.toggle("hidden", name !== "profile-detail");
 
     els.navHome.classList.toggle("active", name === "home");
     els.navTransactions.classList.toggle("active", name === "transactions");
     els.navAdd.classList.toggle("active", name === "add");
     els.navConverter.classList.toggle("active", false);
-    els.navProfile.classList.toggle("active", name === "profile");
-    els.navAdd.classList.toggle("hidden", name === "add");
+    els.navProfile.classList.toggle("active", name === "profile" || name === "profile-detail");
+    els.navAdd.classList.toggle("hidden", name === "add" || name === "profile-detail");
 
-    if (isAddScreen || isProfileScreen) {
+    if (isAddScreen || isProfileScreen || isProfileDetailScreen) {
       closeScopeMenu();
       closeDateSheet();
       setStatusBanner("", "info");
@@ -1045,12 +1241,14 @@
   function showPlaceholder(title) {
     els.placeholderTitle.textContent = title;
     state.screen = "placeholder";
-    els.appRoot.classList.remove("is-add-screen", "is-profile-screen");
+    els.appRoot.classList.remove("is-add-screen", "is-profile-screen", "is-profile-detail-screen");
     els.homeScreen.classList.add("hidden");
     els.transactionsScreen.classList.add("hidden");
     els.addScreen.classList.add("hidden");
     els.profileScreen.classList.add("hidden");
+    els.profileDetailScreen.classList.add("hidden");
     els.placeholderScreen.classList.remove("hidden");
+    els.profileDetailActionsBar.classList.add("hidden");
 
     els.navHome.classList.remove("active");
     els.navTransactions.classList.remove("active");
@@ -1990,29 +2188,50 @@
       await openProfileScreen();
     });
 
-    els.profileInfoToggleBtn.addEventListener("click", () => toggleProfileSection("info"));
-    els.profileSettingsToggleBtn.addEventListener("click", () => toggleProfileSection("settings"));
-    els.profileSupportToggleBtn.addEventListener("click", () => toggleProfileSection("support"));
-
-    els.profileCurrencySelect.addEventListener("change", async () => {
-      await saveProfileSettings({ currency: els.profileCurrencySelect.value });
+    els.profileInfoBtn.addEventListener("click", async () => {
+      await openProfileDetail("info");
+    });
+    els.profileSettingsBtn.addEventListener("click", async () => {
+      await openProfileDetail("settings");
+    });
+    els.profileSupportBtn.addEventListener("click", async () => {
+      await openProfileDetail("support");
+    });
+    els.profileRateBtn.addEventListener("click", async () => {
+      await openProfileDetail("review");
     });
 
-    els.profileLanguageSelect.addEventListener("change", async () => {
-      await saveProfileSettings({ language: els.profileLanguageSelect.value });
+    els.profileDetailBackBtn.addEventListener("click", async () => {
+      await openProfileScreen();
+    });
+    els.profileDetailSaveBtn.addEventListener("click", async () => {
+      await submitProfileDetail();
     });
 
-    els.profileContactDeveloperBtn.addEventListener("click", () => {
-      openTgBotChatWithSupportHint("message");
+    els.profileDetailSupportModeMessageBtn.addEventListener("click", () => {
+      setProfileSupportKind("message");
+      renderProfileDetailScreen();
+    });
+    els.profileDetailSupportModeBugBtn.addEventListener("click", () => {
+      setProfileSupportKind("bug");
+      renderProfileDetailScreen();
     });
 
-    els.profileReportBugBtn.addEventListener("click", () => {
-      openTgBotChatWithSupportHint("bug");
+    els.profileDetailSupportMessageInput.addEventListener("input", () => {
+      state.profile.supportMessage = String(els.profileDetailSupportMessageInput.value || "");
     });
 
-    els.profileRateBtn.addEventListener("click", () => {
-      openBotRatingHint();
+    els.profileDetailReviewCommentInput.addEventListener("input", () => {
+      state.profile.reviewComment = String(els.profileDetailReviewCommentInput.value || "");
     });
+
+    Array.from(els.profileDetailRatingStars.querySelectorAll("[data-rating]")).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setProfileReviewRating(Number(btn.dataset.rating || 0));
+        renderProfileDetailScreen();
+      });
+    });
+
   }
 
   async function init() {
