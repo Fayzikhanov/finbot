@@ -22,6 +22,7 @@
       { key: "all", label: "Общие расходы" },
       { key: "family", label: "Семейные расходы" },
     ],
+    memberOptions: [],
     chartItems: [],
     chartTotal: 0,
     activeCategoryKey: null,
@@ -30,8 +31,9 @@
     comparison: null,
     categoriesByKind: { expense: [], income: [] },
     addForm: {
+      mode: "transaction",
       kind: "expense",
-      context: "personal",
+      recipientUserId: "",
       amountText: "",
       description: "",
       categoryKey: "",
@@ -90,12 +92,17 @@
     addScreen: document.getElementById("addScreen"),
     placeholderScreen: document.getElementById("placeholderScreen"),
     placeholderTitle: document.getElementById("placeholderTitle"),
+    addModeTransactionBtn: document.getElementById("addModeTransactionBtn"),
+    addModeTransferBtn: document.getElementById("addModeTransferBtn"),
+    addKindRow: document.getElementById("addKindRow"),
     addKindExpenseBtn: document.getElementById("addKindExpenseBtn"),
     addKindIncomeBtn: document.getElementById("addKindIncomeBtn"),
-    addContextPersonalBtn: document.getElementById("addContextPersonalBtn"),
-    addContextFamilyBtn: document.getElementById("addContextFamilyBtn"),
+    addTransferRecipientField: document.getElementById("addTransferRecipientField"),
+    addTransferRecipientSelect: document.getElementById("addTransferRecipientSelect"),
     addAmountInput: document.getElementById("addAmountInput"),
+    addDescriptionLabel: document.getElementById("addDescriptionLabel"),
     addDescriptionInput: document.getElementById("addDescriptionInput"),
+    addCategoryField: document.getElementById("addCategoryField"),
     addCategoryValue: document.getElementById("addCategoryValue"),
     addChangeCategoryBtn: document.getElementById("addChangeCategoryBtn"),
     addDateInput: document.getElementById("addDateInput"),
@@ -729,6 +736,59 @@
     els.dateSheet.classList.add("hidden");
   }
 
+  function parseScopeUserId(key) {
+    const value = String(key || "").trim();
+    const match = /^user:(\d+)$/.exec(value);
+    if (!match) return null;
+    const userId = Number(match[1]);
+    if (!Number.isFinite(userId) || userId <= 0) return null;
+    return userId;
+  }
+
+  function extractMemberOptions(scopeOptions) {
+    const items = [];
+    (scopeOptions || []).forEach((option) => {
+      const userId = parseScopeUserId(option && option.key);
+      if (!userId) return;
+      const label = String((option && option.label) || `Участник ${userId}`).trim() || `Участник ${userId}`;
+      items.push({ id: userId, label });
+    });
+    return items;
+  }
+
+  function transferRecipients() {
+    return (state.memberOptions || []).filter((item) => Number(item.id) !== Number(state.currentUserId || 0));
+  }
+
+  function renderTransferRecipients() {
+    const recipients = transferRecipients();
+    const currentValue = String(state.addForm.recipientUserId || "");
+    els.addTransferRecipientSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = recipients.length ? "Выберите участника" : "Нет второго участника";
+    els.addTransferRecipientSelect.appendChild(placeholder);
+
+    recipients.forEach((member) => {
+      const option = document.createElement("option");
+      option.value = String(member.id);
+      option.textContent = member.label;
+      els.addTransferRecipientSelect.appendChild(option);
+    });
+
+    if (currentValue && recipients.some((item) => String(item.id) === currentValue)) {
+      els.addTransferRecipientSelect.value = currentValue;
+    } else if (recipients.length === 1) {
+      const onlyId = String(recipients[0].id);
+      state.addForm.recipientUserId = onlyId;
+      els.addTransferRecipientSelect.value = onlyId;
+    } else {
+      state.addForm.recipientUserId = "";
+      els.addTransferRecipientSelect.value = "";
+    }
+  }
+
   function categoryOptions(kind) {
     const fromApi = state.categoriesByKind && Array.isArray(state.categoriesByKind[kind])
       ? state.categoriesByKind[kind]
@@ -739,20 +799,47 @@
 
   function setAddKind(kind) {
     state.addForm.kind = kind === "income" ? "income" : "expense";
-    state.addForm.categoryManual = false;
-    state.addForm.categoryKey = "";
-    state.addForm.categoryLabel = "";
+    if (state.addForm.mode === "transaction") {
+      state.addForm.categoryManual = false;
+      state.addForm.categoryKey = "";
+      state.addForm.categoryLabel = "";
+    }
     els.addKindExpenseBtn.classList.toggle("active", state.addForm.kind === "expense");
     els.addKindIncomeBtn.classList.toggle("active", state.addForm.kind === "income");
     renderAddCategoryValue();
-    triggerAutoCategoryDebounced();
+    if (state.addForm.mode === "transaction") {
+      triggerAutoCategoryDebounced();
+    }
   }
 
-  function setAddContext(context) {
-    state.addForm.context = context === "family" ? "family" : "personal";
-    els.addContextPersonalBtn.classList.toggle("active", state.addForm.context === "personal");
-    els.addContextFamilyBtn.classList.toggle("active", state.addForm.context === "family");
-    if (!state.addForm.categoryManual) {
+  function setAddMode(mode) {
+    state.addForm.mode = mode === "transfer" ? "transfer" : "transaction";
+    const isTransfer = state.addForm.mode === "transfer";
+
+    els.addModeTransactionBtn.classList.toggle("active", !isTransfer);
+    els.addModeTransferBtn.classList.toggle("active", isTransfer);
+    els.addKindRow.classList.toggle("hidden", isTransfer);
+    els.addCategoryField.classList.toggle("hidden", isTransfer);
+    els.addTransferRecipientField.classList.toggle("hidden", !isTransfer);
+
+    els.addDescriptionLabel.textContent = isTransfer
+      ? "Комментарий (необязательно)"
+      : "Название транзакции";
+    els.addDescriptionInput.placeholder = isTransfer
+      ? "Например: перевод за продукты"
+      : "Например: коммуналка";
+
+    els.addSaveBtn.innerHTML = isTransfer
+      ? `${lucideSvg("repeat-2")}Сохранить перевод`
+      : `${lucideSvg("check-circle-2")}Сохранить`;
+
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+
+    if (isTransfer) {
+      renderTransferRecipients();
+    } else if (!state.addForm.categoryManual) {
       triggerAutoCategoryDebounced();
     }
   }
@@ -826,7 +913,6 @@
         kind: state.addForm.kind,
         amount,
         description,
-        is_family: state.addForm.context === "family",
       });
       const category = payload && payload.category ? payload.category : null;
       if (category && typeof category.key === "string" && typeof category.label === "string") {
@@ -842,6 +928,7 @@
   }
 
   function triggerAutoCategoryDebounced() {
+    if (state.addForm.mode !== "transaction") return;
     if (state.addForm.categoryManual) return;
     if (suggestDebounceTimer) {
       clearTimeout(suggestDebounceTimer);
@@ -858,10 +945,18 @@
   function validateAddForm() {
     const amount = parseAmountInput(state.addForm.amountText);
     if (amount <= 0) return "Введите сумму больше 0";
-    if (!String(state.addForm.description || "").trim()) return "Введите название транзакции";
-    if (!state.addForm.kind) return "Выберите тип транзакции";
-    if (!state.addForm.context) return "Выберите контекст";
     if (!state.addForm.dateValue || !state.addForm.timeValue) return "Укажите дату и время";
+
+    if (state.addForm.mode === "transfer") {
+      const recipientId = Number(state.addForm.recipientUserId || 0);
+      if (!recipientId) return "Выберите получателя перевода";
+      if (recipientId === Number(state.currentUserId || 0)) {
+        return "Нельзя переводить самому себе";
+      }
+    } else {
+      if (!String(state.addForm.description || "").trim()) return "Введите название транзакции";
+      if (!state.addForm.kind) return "Выберите тип транзакции";
+    }
 
     const now = new Date();
     const selected = new Date(addFormDateTimeIso());
@@ -881,24 +976,38 @@
     els.addSaveBtn.disabled = true;
     try {
       const amount = parseAmountInput(state.addForm.amountText);
-      const payload = {
-        kind: state.addForm.kind,
-        amount,
-        description: String(state.addForm.description || "").trim(),
-        is_family: state.addForm.context === "family",
-        category: state.addForm.categoryKey || undefined,
-        datetime_local: addFormDateTimeIso(),
-      };
-      await postJsonWithFallback("create_transaction", payload);
-      showToast("Сохранено");
+      if (state.addForm.mode === "transfer") {
+        const transferPayload = {
+          amount,
+          recipient_user_id: Number(state.addForm.recipientUserId || 0),
+          description: String(state.addForm.description || "").trim(),
+          datetime_local: addFormDateTimeIso(),
+        };
+        await postJsonWithFallback("create_transfer", transferPayload);
+        showToast("Перевод сохранён");
+      } else {
+        const payload = {
+          kind: state.addForm.kind,
+          amount,
+          description: String(state.addForm.description || "").trim(),
+          category: state.addForm.categoryKey || undefined,
+          datetime_local: addFormDateTimeIso(),
+        };
+        await postJsonWithFallback("create_transaction", payload);
+        showToast("Сохранено");
+      }
+
       state.addForm.amountText = "";
       state.addForm.description = "";
       state.addForm.categoryKey = "";
       state.addForm.categoryLabel = "";
       state.addForm.categoryManual = false;
+      state.addForm.mode = "transaction";
+      state.addForm.recipientUserId = "";
       els.addAmountInput.value = "";
       els.addDescriptionInput.value = "";
       setDefaultAddDateTime();
+      setAddMode("transaction");
       renderAddCategoryValue();
       await loadOverview();
       els.screenTitle.textContent = "Главная";
@@ -913,10 +1022,11 @@
   }
 
   function openAddScreen(initialKind) {
-    if (initialKind === "income" || initialKind === "expense") {
+    if (state.addForm.mode === "transaction" && (initialKind === "income" || initialKind === "expense")) {
       setAddKind(initialKind);
     }
-    setAddContext(state.addForm.context);
+    setAddMode(state.addForm.mode || "transaction");
+    renderTransferRecipients();
     if (!state.addForm.dateValue || !state.addForm.timeValue) {
       setDefaultAddDateTime();
     } else {
@@ -930,6 +1040,7 @@
     }
     els.addAmountInput.value = state.addForm.amountText;
     els.addDescriptionInput.value = state.addForm.description;
+    els.addTransferRecipientSelect.value = String(state.addForm.recipientUserId || "");
     renderAddCategoryValue();
     els.screenTitle.textContent = "Добавить транзакцию";
     showScreen("add");
@@ -1230,6 +1341,8 @@
     const scopeItem = scopeOptions.find((x) => x.key === selectedScope);
     state.scope = selectedScope;
     state.scopeOptions = scopeOptions;
+    state.memberOptions = extractMemberOptions(scopeOptions);
+    renderTransferRecipients();
     els.scopeLabel.textContent = scopeItem ? scopeItem.label : "Общие расходы";
 
     const periodObj = payload && payload.period ? payload.period : {};
@@ -1393,23 +1506,26 @@
       renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
     });
 
+    els.addModeTransactionBtn.addEventListener("click", () => setAddMode("transaction"));
+    els.addModeTransferBtn.addEventListener("click", () => setAddMode("transfer"));
     els.addKindExpenseBtn.addEventListener("click", () => setAddKind("expense"));
     els.addKindIncomeBtn.addEventListener("click", () => setAddKind("income"));
-    els.addContextPersonalBtn.addEventListener("click", () => setAddContext("personal"));
-    els.addContextFamilyBtn.addEventListener("click", () => setAddContext("family"));
+    els.addTransferRecipientSelect.addEventListener("change", () => {
+      state.addForm.recipientUserId = String(els.addTransferRecipientSelect.value || "");
+    });
 
     els.addAmountInput.addEventListener("input", () => {
       const formatted = formatAmountInput(els.addAmountInput.value);
       state.addForm.amountText = formatted;
       els.addAmountInput.value = formatted;
-      if (!state.addForm.categoryManual) {
+      if (state.addForm.mode === "transaction" && !state.addForm.categoryManual) {
         triggerAutoCategoryDebounced();
       }
     });
 
     els.addDescriptionInput.addEventListener("input", () => {
       state.addForm.description = els.addDescriptionInput.value || "";
-      if (!state.addForm.categoryManual) {
+      if (state.addForm.mode === "transaction" && !state.addForm.categoryManual) {
         triggerAutoCategoryDebounced();
       }
     });
@@ -1541,7 +1657,8 @@
     bindEvents();
     setAnalyticsTab(state.selectedAnalytics);
     setAddKind("expense");
-    setAddContext("personal");
+    setAddMode("transaction");
+    renderTransferRecipients();
     setDefaultAddDateTime();
     renderAddCategoryValue();
     await loadCategoriesForAdd();
