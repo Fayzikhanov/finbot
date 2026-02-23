@@ -297,24 +297,31 @@
             </section>
 
             <section id="profileDetailSupportPage" class="profile-detail-page hidden">
-              <div class="profile-support-mode">
-                <button
-                  id="profileDetailSupportModeMessageBtn"
-                  class="seg-btn active"
-                  type="button"
-                  data-support-kind="message"
-                >
-                  Связь с разработчиком
+              <div class="profile-support-choice-list">
+                <button id="profileDetailOpenDevSupportBtn" class="profile-row-btn profile-row-btn-plain" type="button">
+                  <span class="profile-row-icon">
+                    <i data-lucide="message-square"></i>
+                  </span>
+                  <span class="profile-row-copy">
+                    <span class="profile-row-title">Связь с разработчиком</span>
+                    <span class="profile-row-meta">Написать сообщение разработчику</span>
+                  </span>
+                  <i data-lucide="chevron-right" class="profile-row-chevron static"></i>
                 </button>
-                <button
-                  id="profileDetailSupportModeBugBtn"
-                  class="seg-btn"
-                  type="button"
-                  data-support-kind="bug"
-                >
-                  Сообщить об ошибке
+                <button id="profileDetailOpenBugSupportBtn" class="profile-row-btn profile-row-btn-plain" type="button">
+                  <span class="profile-row-icon">
+                    <i data-lucide="bug"></i>
+                  </span>
+                  <span class="profile-row-copy">
+                    <span class="profile-row-title">Сообщить об ошибке</span>
+                    <span class="profile-row-meta">Текст и фото (опционально)</span>
+                  </span>
+                  <i data-lucide="chevron-right" class="profile-row-chevron static"></i>
                 </button>
               </div>
+            </section>
+
+            <section id="profileDetailSupportComposePage" class="profile-detail-page hidden">
               <label class="field">
                 <span id="profileDetailSupportMessageLabel" class="field-label">Сообщение</span>
                 <textarea
