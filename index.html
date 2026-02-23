@@ -104,6 +104,61 @@
         </section>
       </main>
 
+      <main id="addScreen" class="screen hidden">
+        <section class="panel add-panel">
+          <div id="addModeRow" class="add-mode">
+            <button id="addModeTransactionBtn" class="seg-btn active" type="button">Транзакция</button>
+            <button id="addModeTransferBtn" class="seg-btn" type="button">Перевод средств внутри семьи</button>
+          </div>
+
+          <div id="addKindRow" class="add-kind">
+            <button id="addKindExpenseBtn" class="seg-btn active" type="button">Расход</button>
+            <button id="addKindIncomeBtn" class="seg-btn" type="button">Доход</button>
+          </div>
+
+          <label id="addTransferRecipientField" class="field hidden">
+            <span class="field-label">Кому перевести</span>
+            <select id="addTransferRecipientSelect" class="field-input field-select">
+              <option value="">Выберите участника</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Сумма</span>
+            <input id="addAmountInput" class="field-input amount" inputmode="numeric" placeholder="0" />
+          </label>
+
+          <label class="field">
+            <span id="addDescriptionLabel" class="field-label">Название транзакции</span>
+            <input id="addDescriptionInput" class="field-input" placeholder="Например: коммуналка" />
+          </label>
+
+          <div id="addCategoryField" class="field">
+            <span class="field-label">Категория</span>
+            <div class="category-row">
+              <div id="addCategoryValue" class="category-pill">—</div>
+              <button id="addChangeCategoryBtn" class="text-btn" type="button">Изменить категорию</button>
+            </div>
+          </div>
+
+          <div class="date-time-grid">
+            <label class="field">
+              <span class="field-label">Дата</span>
+              <input id="addDateInput" class="field-input" type="date" />
+            </label>
+            <label class="field">
+              <span class="field-label">Время</span>
+              <input id="addTimeInput" class="field-input" type="time" />
+            </label>
+          </div>
+
+          <button id="addSaveBtn" class="primary-btn save-btn" type="button">
+            <i data-lucide="check-circle-2"></i>
+            Сохранить
+          </button>
+        </section>
+      </main>
+
       <main id="placeholderScreen" class="screen hidden">
         <section class="panel placeholder-panel">
           <h2 id="placeholderTitle">Скоро</h2>
@@ -160,6 +215,18 @@
         </div>
       </div>
     </div>
+
+    <div id="categorySheet" class="sheet hidden">
+      <div class="sheet-card">
+        <h3>Выберите категорию</h3>
+        <div id="categorySheetList" class="category-sheet-list"></div>
+        <div class="sheet-actions">
+          <button id="closeCategorySheetBtn" class="ghost-btn" type="button">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="appToast" class="toast hidden"></div>
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
