@@ -31,6 +31,10 @@
     currentTransactions: [],
     transactionsTypeFilter: "all",
     comparison: null,
+    analyticsPage: {
+      initialized: false,
+      report: null,
+    },
     categoriesByKind: { expense: [], income: [] },
     addForm: {
       mode: "transaction",
@@ -99,6 +103,14 @@
     transactionsList: document.getElementById("transactionsList"),
     homeScreen: document.getElementById("homeScreen"),
     transactionsScreen: document.getElementById("transactionsScreen"),
+    analyticsScreen: document.getElementById("analyticsScreen"),
+    balanceTrendSvg: document.getElementById("balanceTrendSvg"),
+    balanceTrendLegend: document.getElementById("balanceTrendLegend"),
+    analyticsTrendChanges: document.getElementById("analyticsTrendChanges"),
+    analyticsComparisonCard: document.getElementById("analyticsComparisonCard"),
+    analyticsTopCategories: document.getElementById("analyticsTopCategories"),
+    analyticsParticipants: document.getElementById("analyticsParticipants"),
+    analyticsInsights: document.getElementById("analyticsInsights"),
     addScreen: document.getElementById("addScreen"),
     profileScreen: document.getElementById("profileScreen"),
     profileDetailScreen: document.getElementById("profileDetailScreen"),
@@ -367,6 +379,28 @@
     const abs = Math.abs(pct);
     const rendered = abs < 1 ? abs.toFixed(1) : Math.round(abs).toString();
     return `${pct > 0 ? "+" : "-"}${rendered}%`;
+  }
+
+  function fmtSignedPercentNullable(value) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+      return "—";
+    }
+    return fmtSignedPercent(Number(value));
+  }
+
+  function analyticsPctClass(value, positiveGood) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value)) || Number(value) === 0) {
+      return "";
+    }
+    const next = Number(value);
+    const improved = positiveGood ? next > 0 : next < 0;
+    return improved ? "up" : "down";
+  }
+
+  function analyticsDirectionClass(direction) {
+    if (direction === "improved") return "up";
+    if (direction === "worse") return "down";
+    return "";
   }
 
   function parseDateOnly(value) {
@@ -1473,6 +1507,7 @@
     els.appRoot.classList.toggle("is-profile-detail-screen", isProfileDetailScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
     els.transactionsScreen.classList.toggle("hidden", name !== "transactions");
+    els.analyticsScreen.classList.toggle("hidden", name !== "analytics");
     els.addScreen.classList.toggle("hidden", name !== "add");
     els.profileScreen.classList.toggle("hidden", name !== "profile");
     els.profileDetailScreen.classList.toggle("hidden", name !== "profile-detail");
@@ -1482,7 +1517,7 @@
     els.navHome.classList.toggle("active", name === "home");
     els.navTransactions.classList.toggle("active", name === "transactions");
     els.navAdd.classList.toggle("active", name === "add");
-    els.navConverter.classList.toggle("active", false);
+    els.navConverter.classList.toggle("active", name === "analytics");
     els.navProfile.classList.toggle("active", name === "profile" || name === "profile-detail");
     els.navAdd.classList.toggle("hidden", name === "add" || name === "profile-detail");
 
@@ -1499,6 +1534,7 @@
     els.appRoot.classList.remove("is-add-screen", "is-profile-screen", "is-profile-detail-screen");
     els.homeScreen.classList.add("hidden");
     els.transactionsScreen.classList.add("hidden");
+    els.analyticsScreen.classList.add("hidden");
     els.addScreen.classList.add("hidden");
     els.profileScreen.classList.add("hidden");
     els.profileDetailScreen.classList.add("hidden");
@@ -1509,7 +1545,7 @@
     els.navTransactions.classList.remove("active");
     els.navAdd.classList.remove("hidden");
     els.navAdd.classList.toggle("active", title === "+");
-    els.navConverter.classList.toggle("active", title === "Конвертер");
+    els.navConverter.classList.toggle("active", title === "Аналитика");
     els.navProfile.classList.toggle("active", title === "Профиль");
   }
 
@@ -1533,11 +1569,7 @@
         state.scope = item.key;
         els.scopeLabel.textContent = item.label;
         closeScopeMenu();
-        if (state.screen === "transactions") {
-          loadTransactions();
-        } else {
-          loadOverview();
-        }
+        void reloadDataForCurrentScreen();
       });
       els.scopeMenu.appendChild(btn);
     });
@@ -2131,7 +2163,7 @@
     return { income, expense, balance: income - expense, transfer_total: 0 };
   }
 
-  function renderOverview(payload) {
+  function applyOverviewMeta(payload) {
     const scopeObj = payload && payload.scope ? payload.scope : { selected: state.scope, options: state.scopeOptions };
     const selectedScope = scopeObj.selected || state.scope || "all";
     const scopeOptions = Array.isArray(scopeObj.options) && scopeObj.options.length
@@ -2149,6 +2181,12 @@
     state.start = periodObj.start || state.start;
     state.end = periodObj.end || state.end;
     updatePeriodLabel();
+
+    return { scopeObj, periodObj };
+  }
+
+  function renderOverview(payload) {
+    applyOverviewMeta(payload);
 
     const summary = payload && payload.summary ? payload.summary : summaryFromCurrentTransactions();
     els.incomeValue.textContent = fmtMoney(summary.income || 0, false);
@@ -2200,6 +2238,211 @@
       `;
       els.transactionsList.appendChild(tx);
     });
+  }
+
+  function analyticsUtils() {
+    if (!window.FinAnalyticsUtils || typeof window.FinAnalyticsUtils.buildAnalyticsReport !== "function") {
+      return null;
+    }
+    return window.FinAnalyticsUtils;
+  }
+
+  function analyticsEmptyHtml(text) {
+    return `<div class="empty">${escapeHtml(text || "Нет данных за выбранный период.")}</div>`;
+  }
+
+  function renderAnalyticsTrendChanges(report) {
+    if (!els.analyticsTrendChanges) return;
+    const expenseClass = analyticsPctClass(report && report.trendChange ? report.trendChange.expensePct : 0, false);
+    const incomeClass = analyticsPctClass(report && report.trendChange ? report.trendChange.incomePct : 0, true);
+    els.analyticsTrendChanges.innerHTML = `
+      <div class="analytics-delta-card">
+        <div class="analytics-delta-label">Изменение расходов</div>
+        <div class="analytics-delta-value ${expenseClass}">
+          ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.expensePct : null)}
+        </div>
+      </div>
+      <div class="analytics-delta-card">
+        <div class="analytics-delta-label">Изменение доходов</div>
+        <div class="analytics-delta-value ${incomeClass}">
+          ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.incomePct : null)}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAnalyticsComparisonCard(report) {
+    if (!els.analyticsComparisonCard) return;
+    if (!report || !report.comparison) {
+      els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml("Нет данных для сравнения периодов.");
+      return;
+    }
+    const cmp = report.comparison;
+    const current = cmp.current || { expense: 0, income: 0, balance: 0 };
+    const previous = cmp.previous || { expense: 0, income: 0, balance: 0 };
+    const metrics = cmp.metrics || {};
+    const renderDiffRow = (label, key) => {
+      const metric = metrics[key] || { deltaAbs: 0, deltaPct: 0, direction: "neutral" };
+      const cls = analyticsDirectionClass(metric.direction);
+      return `
+        <div class="analytics-diff-row">
+          <span class="analytics-diff-name">${label}</span>
+          <span class="analytics-diff-abs ${cls}">${fmtMoney(Number(metric.deltaAbs || 0), true)}</span>
+          <span class="analytics-diff-pct ${cls}">${fmtSignedPercentNullable(metric.deltaPct)}</span>
+        </div>
+      `;
+    };
+    els.analyticsComparisonCard.innerHTML = `
+      <div class="analytics-compare-col">
+        <h3 class="analytics-compare-title">Текущий период</h3>
+        <div class="analytics-kv">
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Расходы</span><span class="analytics-kv-val">${fmtMoney(current.expense || 0, false)}</span></div>
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Доходы</span><span class="analytics-kv-val">${fmtMoney(current.income || 0, false)}</span></div>
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Баланс</span><span class="analytics-kv-val">${fmtMoney(current.balance || 0, true)}</span></div>
+        </div>
+      </div>
+      <div class="analytics-compare-col">
+        <h3 class="analytics-compare-title">Прошлый период</h3>
+        <div class="analytics-kv">
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Расходы</span><span class="analytics-kv-val">${fmtMoney(previous.expense || 0, false)}</span></div>
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Доходы</span><span class="analytics-kv-val">${fmtMoney(previous.income || 0, false)}</span></div>
+          <div class="analytics-kv-row"><span class="analytics-kv-key">Баланс</span><span class="analytics-kv-val">${fmtMoney(previous.balance || 0, true)}</span></div>
+        </div>
+      </div>
+      <div class="analytics-diff-block" style="grid-column: 1 / -1;">
+        ${renderDiffRow("Расходы", "expense")}
+        ${renderDiffRow("Доходы", "income")}
+        ${renderDiffRow("Баланс", "balance")}
+      </div>
+    `;
+  }
+
+  function renderAnalyticsTopCategories(report) {
+    if (!els.analyticsTopCategories) return;
+    const rows = Array.isArray(report && report.topCategories) ? report.topCategories : [];
+    if (!rows.length) {
+      els.analyticsTopCategories.innerHTML = analyticsEmptyHtml("Нет расходов за выбранный период.");
+      return;
+    }
+    els.analyticsTopCategories.innerHTML = rows
+      .map((row, idx) => {
+        const trendClass = analyticsDirectionClass(row.trendDirection);
+        let trendLabel = fmtSignedPercentNullable(row.deltaPct);
+        if (row.deltaPct === null && Number(row.previousAmount || 0) === 0 && Number(row.amount || 0) > 0) {
+          trendLabel = "Новая";
+        }
+        return `
+          <div class="analytics-row">
+            <div class="analytics-row-head">
+              <div class="analytics-row-title">${idx + 1}. ${escapeHtml(row.label || "Прочее")}</div>
+              <div class="analytics-row-value">${fmtMoney(row.amount || 0, false)}</div>
+            </div>
+            <div class="analytics-row-meta">
+              <span class="analytics-chip">${Math.round(Number(row.sharePct || 0))}% от расходов</span>
+              <span class="analytics-chip ${trendClass}">${trendLabel}</span>
+              <span class="analytics-chip ${trendClass}">${fmtMoney(row.deltaAbs || 0, true)}</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function renderAnalyticsParticipants(report) {
+    if (!els.analyticsParticipants) return;
+    const participants = report && report.participants ? report.participants : { rows: [] };
+    const rows = Array.isArray(participants.rows) ? participants.rows : [];
+    if (!rows.length) {
+      els.analyticsParticipants.innerHTML = analyticsEmptyHtml("Нет данных по участникам для выбранного периода.");
+      return;
+    }
+    els.analyticsParticipants.innerHTML = rows
+      .map((row) => `
+        <div class="analytics-row">
+          <div class="analytics-row-head">
+            <div class="analytics-row-title">${escapeHtml(row.name || "Участник")}</div>
+            <div class="analytics-row-value">${fmtMoney(row.expense || 0, false)}</div>
+          </div>
+          <div class="analytics-row-meta">
+            <span class="analytics-chip">${Math.round(Number(row.sharePct || 0))}% семейных расходов</span>
+            <span class="analytics-chip">Средний чек ${fmtMoney(row.avgCheck || 0, false)}</span>
+            <span class="analytics-chip">${Number(row.txCount || 0)} транз.</span>
+            ${row.isTopSpender ? '<span class="analytics-chip top">Лидер расходов</span>' : ""}
+          </div>
+        </div>
+      `)
+      .join("");
+  }
+
+  function renderAnalyticsInsights(report) {
+    if (!els.analyticsInsights) return;
+    const insights = Array.isArray(report && report.insights) ? report.insights : [];
+    if (!insights.length) {
+      els.analyticsInsights.innerHTML = analyticsEmptyHtml("Недостаточно данных для инсайтов.");
+      return;
+    }
+
+    function insightIcon(item) {
+      if (item.key === "max-day") return "calendar-range";
+      if (item.key === "avg-day-expense") return "gauge";
+      if (item.key === "max-transaction") return "wallet";
+      return item.kind === "positive" ? "trending-down" : "trending-up";
+    }
+
+    function insightText(item) {
+      if (item.key === "category-growth" || item.key === "category-drop") {
+        const pct = fmtSignedPercentNullable(item.pct);
+        if (item.key === "category-drop") {
+          return `${escapeHtml(item.value || "Категория")}: меньше на ${fmtMoney(item.amount || 0, false)}, ${pct} к прошлому периоду.`;
+        }
+        return `${escapeHtml(item.value || "Категория")}: ${fmtMoney(item.amount || 0, true)}, ${pct} к прошлому периоду.`;
+      }
+      if (item.key === "max-day") {
+        return `${formatDateLabel(item.value)} — ${fmtMoney(item.amount || 0, false)} расходов.`;
+      }
+      if (item.key === "avg-day-expense") {
+        return `${fmtMoney(item.amount || 0, false)} в среднем за день в выбранном периоде.`;
+      }
+      if (item.key === "max-transaction") {
+        const kindLabel = item.txKind === "income" ? "доход" : "расход";
+        return `${escapeHtml(item.value || item.categoryLabel || "Транзакция")} • ${kindLabel} ${fmtMoney(item.amount || 0, false)}.`;
+      }
+      return "";
+    }
+
+    els.analyticsInsights.innerHTML = insights
+      .map((item) => `
+        <div class="analytics-insight-card">
+          <div class="analytics-insight-icon ${escapeHtml(item.kind || "neutral")}">${lucideSvg(insightIcon(item), { width: 16, height: 16 })}</div>
+          <div>
+            <div class="analytics-insight-title">${escapeHtml(item.title || "Инсайт")}</div>
+            <div class="analytics-insight-text">${insightText(item)}</div>
+          </div>
+        </div>
+      `)
+      .join("");
+  }
+
+  function renderAnalyticsPageEmpty(message) {
+    if (els.balanceTrendSvg) els.balanceTrendSvg.innerHTML = "";
+    if (els.balanceTrendLegend) els.balanceTrendLegend.innerHTML = "";
+    if (els.analyticsTrendChanges) els.analyticsTrendChanges.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsComparisonCard) els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsTopCategories) els.analyticsTopCategories.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsParticipants) els.analyticsParticipants.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsInsights) els.analyticsInsights.innerHTML = analyticsEmptyHtml(message);
+  }
+
+  function renderAnalyticsPage(report) {
+    if (!report) {
+      renderAnalyticsPageEmpty("Нет данных за выбранный период.");
+      return;
+    }
+    renderAnalyticsTrendChanges(report);
+    renderAnalyticsComparisonCard(report);
+    renderAnalyticsTopCategories(report);
+    renderAnalyticsParticipants(report);
+    renderAnalyticsInsights(report);
   }
 
   async function loadOverview() {
@@ -2290,6 +2533,135 @@
     }
   }
 
+  async function fetchTransactionsItems(overrides) {
+    const payload = await fetchJsonWithFallback("transactions", overrides);
+    return Array.isArray(payload && payload.items) ? payload.items : [];
+  }
+
+  async function loadAnalyticsParticipantBuckets(periodObj) {
+    const members = Array.isArray(state.memberOptions) ? state.memberOptions : [];
+    if (!members.length) return [];
+    const periodMode = periodObj && periodObj.mode ? periodObj.mode : state.period;
+    const periodStart = periodObj && periodObj.start ? periodObj.start : state.start;
+    const periodEnd = periodObj && periodObj.end ? periodObj.end : state.end;
+
+    const tasks = members.map(async (member) => {
+      try {
+        const items = await fetchTransactionsItems({
+          scope: `user:${member.id}`,
+          period: periodMode,
+          start: periodStart,
+          end: periodEnd,
+        });
+        return { userId: member.id, name: member.label, items };
+      } catch (err) {
+        console.error("analytics member transactions fetch failed", member && member.id, err);
+        return { userId: member.id, name: member.label, items: [] };
+      }
+    });
+    return Promise.all(tasks);
+  }
+
+  async function loadAnalyticsPage() {
+    if (!state.chatId) {
+      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
+      renderAnalyticsPageEmpty("Нет данных по текущему чату.");
+      return;
+    }
+    const utils = analyticsUtils();
+    if (!utils) {
+      setStatusBanner("Модуль аналитики не загружен.", "error");
+      renderAnalyticsPageEmpty("Модуль аналитики недоступен.");
+      return;
+    }
+
+    state.isLoading = true;
+    try {
+      const overviewPayload = await fetchJsonWithFallback("overview");
+      const { periodObj } = applyOverviewMeta(overviewPayload);
+
+      const currentItems = await fetchTransactionsItems({
+        scope: state.scope,
+        period: periodObj.mode || state.period,
+        start: periodObj.start || state.start,
+        end: periodObj.end || state.end,
+      });
+
+      const compareRange = getComparisonRange(
+        periodObj.mode || state.period,
+        periodObj.start || state.start,
+        periodObj.end || state.end
+      );
+      let previousItems = [];
+      if (compareRange) {
+        previousItems = await fetchTransactionsItems({
+          scope: state.scope,
+          period: "custom",
+          start: compareRange.start,
+          end: compareRange.end,
+        });
+      }
+
+      const participantBuckets = await loadAnalyticsParticipantBuckets(periodObj);
+      state.currentTransactions = currentItems;
+
+      const report = utils.buildAnalyticsReport({
+        currentItems,
+        previousItems,
+        startIso: periodObj.start || state.start,
+        endIso: periodObj.end || state.end,
+        periodMode: periodObj.mode || state.period,
+        participantBuckets,
+      });
+
+      state.analyticsPage.report = report;
+      state.apiUnavailable = false;
+      renderAnalyticsPage(report);
+      renderBalanceTrendChart(currentItems, report.period.start, report.period.end);
+      setStatusBanner("", "info");
+    } catch (err) {
+      state.apiUnavailable = true;
+      state.analyticsPage.report = null;
+      setStatusBanner(
+        "Не удалось загрузить аналитику. Проверьте API mini-app (домен /api).",
+        "error"
+      );
+      renderAnalyticsPageEmpty("Ошибка загрузки аналитики.");
+      console.error("analytics load failed", err);
+      return;
+    } finally {
+      state.isLoading = false;
+    }
+  }
+
+  async function openAnalyticsScreen() {
+    els.screenTitle.textContent = "Аналитика";
+    els.navAdd.classList.remove("hidden");
+    showScreen("analytics");
+    if (!state.analyticsPage.initialized) {
+      state.analyticsPage.initialized = true;
+      state.period = "month";
+      state.start = null;
+      state.end = null;
+      updatePeriodLabel();
+    }
+    await loadAnalyticsPage();
+  }
+
+  async function reloadDataForCurrentScreen() {
+    if (state.screen === "transactions") {
+      await loadTransactions();
+      return;
+    }
+    if (state.screen === "analytics") {
+      await loadAnalyticsPage();
+      return;
+    }
+    if (state.screen === "home") {
+      await loadOverview();
+    }
+  }
+
   function bindEvents() {
     els.tabIncome.addEventListener("click", () => {
       if (state.isLoading) return;
@@ -2377,11 +2749,7 @@
         state.end = null;
         updatePeriodLabel();
         closeDateSheet();
-        if (state.screen === "transactions") {
-          await loadTransactions();
-        } else {
-          await loadOverview();
-        }
+        await reloadDataForCurrentScreen();
       });
     });
 
@@ -2395,11 +2763,7 @@
       state.end = endVal;
       updatePeriodLabel();
       closeDateSheet();
-      if (state.screen === "transactions") {
-        await loadTransactions();
-      } else {
-        await loadOverview();
-      }
+      await reloadDataForCurrentScreen();
     });
 
     els.viewAllBtn.addEventListener("click", async () => {
@@ -2433,10 +2797,8 @@
       openAddScreen(defaultKind);
     });
 
-    els.navConverter.addEventListener("click", () => {
-      els.screenTitle.textContent = "Раздел";
-      els.navAdd.classList.remove("hidden");
-      showPlaceholder("Конвертер");
+    els.navConverter.addEventListener("click", async () => {
+      await openAnalyticsScreen();
     });
 
     els.navProfile.addEventListener("click", async () => {
@@ -2589,6 +2951,8 @@
         await loadTransactions();
       } else if (state.screen === "profile" || state.screen === "profile-detail") {
         await loadProfile();
+      } else if (state.screen === "analytics") {
+        await loadAnalyticsPage();
       } else if (state.screen === "home") {
         await loadOverview();
       }
@@ -2600,6 +2964,8 @@
         await loadTransactions();
       } else if (state.screen === "profile" || state.screen === "profile-detail") {
         await loadProfile();
+      } else if (state.screen === "analytics") {
+        await loadAnalyticsPage();
       } else if (state.screen === "home") {
         await loadOverview();
       }
