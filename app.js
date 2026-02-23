@@ -284,9 +284,9 @@
 
   function effectiveChatId() {
     const fromState = Number(state.chatId || 0);
-    if (fromState > 0) return fromState;
+    if (fromState !== 0) return fromState;
     const fromTgChat = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
-    if (fromTgChat > 0) {
+    if (fromTgChat !== 0) {
       state.chatId = fromTgChat;
       return fromTgChat;
     }
