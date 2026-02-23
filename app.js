@@ -1,5 +1,23 @@
 (function () {
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+  function applyIosInputZoomFix() {
+    const ua = String(navigator.userAgent || "");
+    const isIosDevice =
+      /iPhone|iPad|iPod/i.test(ua) ||
+      (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
+    if (!isIosDevice) return;
+
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+
+    const baseContent = "width=device-width, initial-scale=1, viewport-fit=cover";
+    // Prevent iOS WebView auto-zoom when focusing inputs in profile forms.
+    viewport.setAttribute("content", `${baseContent}, maximum-scale=1`);
+  }
+
+  applyIosInputZoomFix();
+
   if (tg) {
     tg.ready();
     tg.expand();
