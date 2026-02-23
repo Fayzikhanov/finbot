@@ -332,7 +332,7 @@
                 ></textarea>
               </label>
               <div id="profileDetailSupportPhotoWrap" class="profile-support-photo-wrap hidden">
-                <input id="profileDetailSupportPhotoInput" class="hidden" type="file" accept="image/*" />
+                <input id="profileDetailSupportPhotoInput" class="hidden" type="file" accept="image/*" multiple />
                 <div class="profile-support-photo-row">
                   <button id="profileDetailSupportAttachPhotoBtn" class="ghost-btn profile-attach-btn" type="button">
                     Прикрепить фото
@@ -342,11 +342,12 @@
                     class="ghost-btn profile-attach-btn hidden"
                     type="button"
                   >
-                    Убрать фото
+                    Очистить фото
                   </button>
                 </div>
-                <div id="profileDetailSupportPhotoMeta" class="profile-hint profile-photo-meta">Фото не выбрано</div>
-                <img id="profileDetailSupportPhotoPreview" class="profile-photo-preview hidden" alt="Предпросмотр" />
+                <div class="profile-photo-limit-note">Можно добавить до 3 фото (до 4 МБ каждое)</div>
+                <div id="profileDetailSupportPhotoMeta" class="profile-hint profile-photo-meta">Фото не выбраны</div>
+                <div id="profileDetailSupportPhotoGrid" class="profile-photo-grid hidden" aria-live="polite"></div>
               </div>
               <p class="profile-hint">
                 Сообщение будет отправлено разработчику прямо из miniapp от имени вашего профиля.
