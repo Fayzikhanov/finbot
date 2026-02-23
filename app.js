@@ -63,21 +63,15 @@
     applyCustomPeriodBtn: document.getElementById("applyCustomPeriodBtn"),
     customStartDate: document.getElementById("customStartDate"),
     customEndDate: document.getElementById("customEndDate"),
-    tabBalance: document.getElementById("tabBalance"),
     tabIncome: document.getElementById("tabIncome"),
     tabExpense: document.getElementById("tabExpense"),
     incomeValue: document.getElementById("incomeValue"),
     expenseValue: document.getElementById("expenseValue"),
-    balanceValue: document.getElementById("balanceValue"),
+    familyTransfersValue: document.getElementById("familyTransfersValue"),
     analyticsPanel: document.getElementById("analyticsPanel"),
     recentPanel: document.getElementById("recentPanel"),
     chartSectionTitle: document.getElementById("chartSectionTitle"),
     recentSectionTitle: document.getElementById("recentSectionTitle"),
-    balanceAnalytics: document.getElementById("balanceAnalytics"),
-    balanceMainValue: document.getElementById("balanceMainValue"),
-    balanceDelta: document.getElementById("balanceDelta"),
-    balanceTrendSvg: document.getElementById("balanceTrendSvg"),
-    balanceTrendLegend: document.getElementById("balanceTrendLegend"),
     breakdownView: document.getElementById("breakdownView"),
     donut: document.getElementById("donut"),
     donutTotal: document.getElementById("donutTotal"),
@@ -1201,6 +1195,7 @@
   }
 
   function renderBalanceTrendChart(items, startIso, endIso) {
+    if (!els.balanceTrendSvg || !els.balanceTrendLegend) return;
     const series = buildTrendSeries(items, startIso, endIso);
     if (!series.labels.length) {
       els.balanceTrendSvg.innerHTML = "";
@@ -1256,54 +1251,23 @@
   }
 
   function setAnalyticsTab(type) {
-    state.selectedAnalytics = type;
+    state.selectedAnalytics = type === "income" ? "income" : "expense";
     state.activeCategoryKey = null;
-    els.tabBalance.classList.toggle("active", type === "balance");
-    els.tabIncome.classList.toggle("active", type === "income");
-    els.tabExpense.classList.toggle("active", type === "expense");
+    els.tabIncome.classList.toggle("active", state.selectedAnalytics === "income");
+    els.tabExpense.classList.toggle("active", state.selectedAnalytics === "expense");
   }
 
   function renderAnalytics(summary, periodObj) {
-    const tab = state.selectedAnalytics;
+    const tab = state.selectedAnalytics === "income" ? "income" : "expense";
     els.analyticsPanel.classList.remove("analytics-switch");
     els.recentPanel.classList.remove("analytics-switch");
     void els.analyticsPanel.offsetWidth;
     els.analyticsPanel.classList.add("analytics-switch");
     els.recentPanel.classList.add("analytics-switch");
 
-    if (tab === "balance") {
-      const currentBalance = Number(summary.balance || 0);
-      const prevBalance = Number((state.comparison && state.comparison.prevBalance) || 0);
-      let pct = 0;
-      if (prevBalance === 0) {
-        pct = currentBalance === 0 ? 0 : currentBalance > 0 ? 100 : -100;
-      } else {
-        pct = ((currentBalance - prevBalance) / Math.abs(prevBalance)) * 100;
-      }
-      const direction = currentBalance - prevBalance;
-      els.chartSectionTitle.textContent = "Динамика баланса";
-      els.recentSectionTitle.textContent = "Последние транзакции";
-      els.balanceAnalytics.classList.remove("hidden");
-      els.breakdownView.classList.add("hidden");
-      els.balanceMainValue.classList.toggle("negative", currentBalance < 0);
-      els.balanceMainValue.textContent = fmtMoney(currentBalance, true);
-
-      const compareLabel = (state.comparison && state.comparison.label) || "к прошлому периоду";
-      if (!state.comparison) {
-        els.balanceDelta.className = "balance-delta neutral";
-        els.balanceDelta.textContent = "Нет данных для сравнения";
-      } else {
-        const up = direction >= 0;
-        els.balanceDelta.className = `balance-delta ${up ? "up" : "down"}`;
-        els.balanceDelta.textContent = `${up ? "↑" : "↓"} ${fmtSignedPercent(pct)} ${compareLabel}`;
-      }
-      renderBalanceTrendChart(state.currentTransactions, periodObj.start, periodObj.end);
-      renderRecent(getRecentByType("all", 5), "all");
-      return;
+    if (els.breakdownView) {
+      els.breakdownView.classList.remove("hidden");
     }
-
-    els.balanceAnalytics.classList.add("hidden");
-    els.breakdownView.classList.remove("hidden");
     if (tab === "income") {
       els.chartSectionTitle.textContent = "Разбивка доходов";
       els.recentSectionTitle.textContent = "Последние доходы";
@@ -1329,7 +1293,7 @@
         .filter((x) => String(x.kind || "") === "expense")
         .reduce((acc, x) => acc + Number(x.amount || 0), 0)
     );
-    return { income, expense, balance: income - expense };
+    return { income, expense, balance: income - expense, transfer_total: 0 };
   }
 
   function renderOverview(payload) {
@@ -1354,7 +1318,9 @@
     const summary = payload && payload.summary ? payload.summary : summaryFromCurrentTransactions();
     els.incomeValue.textContent = fmtMoney(summary.income || 0, false);
     els.expenseValue.textContent = fmtMoney(summary.expense || 0, false);
-    els.balanceValue.textContent = fmtMoney(summary.balance || 0, true);
+    if (els.familyTransfersValue) {
+      els.familyTransfersValue.textContent = fmtMoney(summary.transfer_total || 0, false);
+    }
     renderAnalytics(summary, payload.period || { start: state.start, end: state.end });
     setStatusBanner("", "info");
   }
@@ -1490,11 +1456,6 @@
   }
 
   function bindEvents() {
-    els.tabBalance.addEventListener("click", () => {
-      if (state.isLoading) return;
-      setAnalyticsTab("balance");
-      renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
-    });
     els.tabIncome.addEventListener("click", () => {
       if (state.isLoading) return;
       setAnalyticsTab("income");
