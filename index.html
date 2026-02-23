@@ -319,17 +319,44 @@
                 <span id="profileDetailSupportMessageLabel" class="field-label">Сообщение</span>
                 <textarea
                   id="profileDetailSupportMessageInput"
-                  class="field-input profile-textarea"
+                  class="field-input profile-textarea profile-support-textarea"
                   maxlength="2000"
                   placeholder="Опишите вопрос или проблему"
                 ></textarea>
               </label>
+              <div id="profileDetailSupportPhotoWrap" class="profile-support-photo-wrap hidden">
+                <input id="profileDetailSupportPhotoInput" class="hidden" type="file" accept="image/*" />
+                <div class="profile-support-photo-row">
+                  <button id="profileDetailSupportAttachPhotoBtn" class="ghost-btn profile-attach-btn" type="button">
+                    Прикрепить фото
+                  </button>
+                  <button
+                    id="profileDetailSupportRemovePhotoBtn"
+                    class="ghost-btn profile-attach-btn hidden"
+                    type="button"
+                  >
+                    Убрать фото
+                  </button>
+                </div>
+                <div id="profileDetailSupportPhotoMeta" class="profile-hint profile-photo-meta">Фото не выбрано</div>
+                <img id="profileDetailSupportPhotoPreview" class="profile-photo-preview hidden" alt="Предпросмотр" />
+              </div>
               <p class="profile-hint">
                 Сообщение будет отправлено разработчику прямо из miniapp от имени вашего профиля.
               </p>
             </section>
 
             <section id="profileDetailReviewPage" class="profile-detail-page hidden">
+              <div id="profileDetailExistingReviewCard" class="profile-existing-review hidden">
+                <div class="profile-existing-review-head">
+                  <span class="profile-existing-review-title">Текущая оценка</span>
+                  <span id="profileDetailExistingReviewRating" class="profile-existing-review-rating">—</span>
+                </div>
+                <p id="profileDetailExistingReviewComment" class="profile-existing-review-comment"></p>
+                <button id="profileDetailReviewAgainBtn" class="ghost-btn profile-review-again-btn" type="button">
+                  Оценить заново
+                </button>
+              </div>
               <div class="profile-rating-wrap">
                 <p class="profile-rating-label">Поставьте оценку</p>
                 <div id="profileDetailRatingStars" class="profile-rating-stars" role="radiogroup" aria-label="Оценка">
