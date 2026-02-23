@@ -270,6 +270,29 @@
     return dt.toLocaleDateString("ru-RU");
   }
 
+  function effectiveCurrentUserId() {
+    const fromState = Number(state.currentUserId || 0);
+    if (fromState > 0) return fromState;
+    const tgUser = safeTgUser();
+    const fromTg = Number((tgUser && tgUser.id) || 0);
+    if (fromTg > 0) {
+      state.currentUserId = fromTg;
+      return fromTg;
+    }
+    return 0;
+  }
+
+  function effectiveChatId() {
+    const fromState = Number(state.chatId || 0);
+    if (fromState > 0) return fromState;
+    const fromTgChat = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
+    if (fromTgChat > 0) {
+      state.chatId = fromTgChat;
+      return fromTgChat;
+    }
+    return 0;
+  }
+
   function updatePeriodLabel() {
     if (state.period === "custom" && state.start && state.end) {
       els.periodLabel.textContent = `${formatDateLabel(state.start)} - ${formatDateLabel(state.end)}`;
@@ -593,7 +616,7 @@
   function buildApiParams(overrides) {
     const opts = Object.assign(
       {
-        chatId: state.chatId,
+        chatId: effectiveChatId(),
         scope: state.scope,
         period: state.period,
         start: state.start,
@@ -604,7 +627,7 @@
 
     const params = new URLSearchParams();
     params.set("chat_id", String(opts.chatId || 0));
-    params.set("user_id", String(state.currentUserId || 0));
+    params.set("user_id", String(effectiveCurrentUserId() || 0));
     params.set("scope", String(opts.scope || "all"));
     params.set("period", String(opts.period || "today"));
     if (opts.period === "custom" && opts.start && opts.end) {
@@ -636,8 +659,8 @@
 
   function buildPostQuery() {
     const params = new URLSearchParams();
-    params.set("chat_id", String(state.chatId || 0));
-    params.set("user_id", String(state.currentUserId || 0));
+    params.set("chat_id", String(effectiveChatId() || 0));
+    params.set("user_id", String(effectiveCurrentUserId() || 0));
     return params.toString();
   }
 
@@ -716,6 +739,21 @@
       els.appToast.classList.add("hidden");
       els.appToast.textContent = "";
     }, 2600);
+  }
+
+  function userFacingApiError(err, fallbackText) {
+    const raw = String((err && err.message) || "").trim();
+    if (!raw) return String(fallbackText || "Ошибка");
+    if (/HTTP 404\b/i.test(raw)) {
+      return "MiniApp API не обновлён (404). Перезапустите бот и miniapp server.";
+    }
+    if (/support chat is not configured/i.test(raw)) {
+      return "Поддержка не настроена: проверьте ADMIN_CHAT_ID";
+    }
+    if (/Failed to fetch|NetworkError|api unavailable/i.test(raw)) {
+      return "Нет связи с miniapp server";
+    }
+    return raw;
   }
 
   function safeTgUser() {
@@ -1140,14 +1178,14 @@
       if (state.screen === "profile-detail") {
         renderProfileDetailScreen();
       }
-    } catch (_err) {
+    } catch (err) {
       state.profile.data = normalizeProfileData(state.profile.data || {});
       state.profile.loaded = true;
       renderProfileScreen();
       if (state.screen === "profile-detail") {
         renderProfileDetailScreen();
       }
-      showToast("Профиль загружен частично (без сервера)");
+      showToast(userFacingApiError(err, "Профиль загружен частично (без сервера)"));
     } finally {
       state.profile.loading = false;
     }
@@ -1179,9 +1217,7 @@
       showToast(successText || "Сохранено");
     } catch (err) {
       console.error("profile save failed", err);
-      showToast(
-        String((err && err.message) || "").trim() || "Не удалось сохранить. Попробуйте ещё раз."
-      );
+      showToast(userFacingApiError(err, "Не удалось сохранить. Попробуйте ещё раз."));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1247,9 +1283,7 @@
       showToast(kind === "bug" ? "Ошибка отправлена разработчику" : "Сообщение отправлено");
     } catch (err) {
       console.error("support send failed", err);
-      showToast(
-        String((err && err.message) || "").trim() || "Не удалось отправить сообщение"
-      );
+      showToast(userFacingApiError(err, "Не удалось отправить сообщение"));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1286,9 +1320,7 @@
       showToast("Спасибо за оценку");
     } catch (err) {
       console.error("review submit failed", err);
-      showToast(
-        String((err && err.message) || "").trim() || "Не удалось отправить оценку"
-      );
+      showToast(userFacingApiError(err, "Не удалось отправить оценку"));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
