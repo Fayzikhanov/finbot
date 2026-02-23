@@ -893,8 +893,8 @@ body {
   gap: 12px;
 }
 
-.add-kind,
-.add-context {
+.add-mode,
+.add-kind {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -932,6 +932,7 @@ body {
 
 .field-input {
   width: 100%;
+  max-width: 100%;
   min-height: 46px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -940,6 +941,17 @@ body {
   color: var(--text-main);
   font-size: 16px;
   font-weight: 500;
+}
+
+.field-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #8f94a3 50%),
+    linear-gradient(135deg, #8f94a3 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
 }
 
 .field-input.amount {
@@ -986,6 +998,14 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.date-time-grid .field {
+  min-width: 0;
+}
+
+.date-time-grid .field-input {
+  min-width: 0;
 }
 
 .save-btn {
@@ -1083,5 +1103,9 @@ body {
 
   .balance-main-value {
     font-size: 30px;
+  }
+
+  .date-time-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
