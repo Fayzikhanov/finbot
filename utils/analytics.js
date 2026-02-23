@@ -246,6 +246,26 @@
     };
   }
 
+  function monthForecastFromAverage(avgExpensePerDay, endIso) {
+    const end = parseDateOnly(endIso);
+    if (!end) {
+      return {
+        applicable: false,
+        remainingDaysInMonth: 0,
+        projectedExpenseToMonthEnd: 0,
+        monthEndIso: "",
+      };
+    }
+    const monthEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+    const remainingDaysInMonth = Math.max(0, monthEnd.getDate() - end.getDate());
+    return {
+      applicable: true,
+      remainingDaysInMonth,
+      projectedExpenseToMonthEnd: Number(avgExpensePerDay || 0) * remainingDaysInMonth,
+      monthEndIso: toDateOnlyIso(monthEnd),
+    };
+  }
+
   function buildBiggestExpenseCategoryChange(currentItems, previousItems) {
     const current = groupExpensesByCategory(currentItems);
     const previous = groupExpensesByCategory(previousItems);
@@ -298,7 +318,6 @@
     const totals = buildTotals(currentItems);
     const dayStats = buildExpenseDayStats(currentItems, startIso, endIso);
     const catChange = buildBiggestExpenseCategoryChange(currentItems, previousItems);
-    const maxTx = biggestTransaction(currentItems);
     const insights = [];
 
     if (catChange.bestGrowth) {
@@ -340,20 +359,159 @@
       });
     }
 
-    if (maxTx && maxTx.amount > 0) {
-      insights.push({
-        key: "max-transaction",
-        kind: maxTx.kind === "income" ? "positive" : "warning",
-        title: "Самая большая транзакция",
-        value: maxTx.description || maxTx.categoryLabel,
-        amount: maxTx.amount,
-        txKind: maxTx.kind,
-        categoryLabel: maxTx.categoryLabel,
-        createdAtIso: maxTx.createdAtIso,
-      });
+    return insights.slice(0, 3);
+  }
+
+  function heroPeriodPhrase(periodMode) {
+    if (periodMode === "today") return "Сегодня";
+    if (periodMode === "week") return "На этой неделе";
+    if (periodMode === "month") return "В этом месяце";
+    if (periodMode === "year") return "В этом году";
+    return "За выбранный период";
+  }
+
+  function buildHeroSummary(currentTotals, trendChange, periodMode) {
+    const balance = Number((currentTotals && currentTotals.balance) || 0);
+    const expensePct = trendChange ? Number(trendChange.expensePct || 0) : 0;
+    const incomePct = trendChange ? trendChange.incomePct : null;
+    const periodText = heroPeriodPhrase(periodMode);
+
+    if (balance > 0) {
+      return {
+        tone: "positive",
+        title: `${periodText} вы в плюсе`,
+        valueType: "money",
+        value: balance,
+        subtitle: "Баланс выше нуля",
+      };
     }
 
-    return insights.slice(0, 3);
+    if (Number.isFinite(expensePct) && expensePct > 10) {
+      return {
+        tone: "warning",
+        title: "Расходы выросли",
+        valueType: "percent",
+        value: expensePct,
+        subtitle: "по сравнению с прошлым периодом",
+      };
+    }
+
+    if (incomePct !== null && Number.isFinite(Number(incomePct)) && Number(incomePct) < 0) {
+      return {
+        tone: "warning",
+        title: "Доходы снизились",
+        valueType: "percent",
+        value: Math.abs(Number(incomePct)),
+        subtitle: "по сравнению с прошлым периодом",
+      };
+    }
+
+    if (balance < 0) {
+      return {
+        tone: "neutral",
+        title: `${periodText} вы в минусе`,
+        valueType: "money",
+        value: Math.abs(balance),
+        subtitle: "Баланс отрицательный",
+      };
+    }
+
+    return {
+      tone: "neutral",
+      title: `${periodText} без резких изменений`,
+      valueType: "text",
+      valueText: "Стабильно",
+      subtitle: "Сильных отклонений не видно",
+    };
+  }
+
+  function buildCategoryFocus(topCategories) {
+    const rows = Array.isArray(topCategories) ? topCategories : [];
+    return {
+      primary: rows.length ? rows[0] : null,
+      secondary: rows.slice(1, 3),
+    };
+  }
+
+  function buildFamilyBehavior(participants) {
+    const model = participants && typeof participants === "object" ? participants : { rows: [] };
+    const rows = Array.isArray(model.rows) ? model.rows : [];
+    const leader = rows.length ? rows[0] : null;
+    const leaderSharePct = Number((leader && leader.sharePct) || 0);
+    const dominant = Boolean(leader && leaderSharePct > 70);
+
+    let statement = "";
+    if (leader && Number(leader.expense || 0) > 0) {
+      if (dominant) {
+        statement = `${leader.name} формирует ${Math.round(leaderSharePct)}% семейных расходов`;
+      } else {
+        statement = `Основной вклад в расходы у ${leader.name} (${Math.round(leaderSharePct)}%)`;
+      }
+    }
+
+    return {
+      dominant,
+      leader,
+      leaderSharePct,
+      statement,
+      others: leader ? rows.slice(1) : rows,
+    };
+  }
+
+  function buildForecast(dayStats, endIso) {
+    const avgExpensePerDay = Number((dayStats && dayStats.avgExpensePerDay) || 0);
+    const monthForecast = monthForecastFromAverage(avgExpensePerDay, endIso);
+    return {
+      avgExpensePerDay,
+      remainingDaysInMonth: Number(monthForecast.remainingDaysInMonth || 0),
+      projectedExpenseToMonthEnd: Number(monthForecast.projectedExpenseToMonthEnd || 0),
+      applicable: Boolean(monthForecast.applicable),
+      monthEndIso: String(monthForecast.monthEndIso || ""),
+    };
+  }
+
+  function buildInterpretationInsights(baseInsights) {
+    const rows = Array.isArray(baseInsights) ? baseInsights : [];
+    return rows.slice(0, 3).map((item) => {
+      if (item.key === "category-growth") {
+        return {
+          key: "category-growth",
+          kind: "warning",
+          title: "Категория с ростом",
+          categoryLabel: String(item.value || ""),
+          amount: Number(item.amount || 0),
+          pct: item.pct,
+        };
+      }
+      if (item.key === "category-drop") {
+        return {
+          key: "category-drop",
+          kind: "positive",
+          title: "Категория со снижением",
+          categoryLabel: String(item.value || ""),
+          amount: Number(item.amount || 0),
+          pct: item.pct,
+        };
+      }
+      if (item.key === "max-day") {
+        return {
+          key: "max-day",
+          kind: "neutral",
+          title: "Самый затратный день",
+          dateIso: String(item.value || ""),
+          amount: Number(item.amount || 0),
+        };
+      }
+      if (item.key === "avg-day-expense") {
+        return {
+          key: "avg-day-expense",
+          kind: "neutral",
+          title: "Средний расход в день",
+          amount: Number(item.amount || 0),
+        };
+      }
+      return item;
+    });
   }
 
   function buildAnalyticsReport(options) {
@@ -369,7 +527,12 @@
     const comparison = buildPeriodComparison(currentItems, previousItems);
     const topCategories = buildTopCategories(currentItems, previousItems, 3);
     const participants = buildParticipants(participantBuckets);
-    const insights = buildInsights(currentItems, previousItems, startIso, endIso);
+    const dayStats = buildExpenseDayStats(currentItems, startIso, endIso);
+    const trendChange = {
+      expensePct: percentChange(currentTotals.expense, previousTotals.expense),
+      incomePct: percentChange(currentTotals.income, previousTotals.income),
+    };
+    const insights = buildInterpretationInsights(buildInsights(currentItems, previousItems, startIso, endIso));
 
     return {
       period: {
@@ -380,13 +543,14 @@
       },
       totals: currentTotals,
       previousTotals,
-      trendChange: {
-        expensePct: percentChange(currentTotals.expense, previousTotals.expense),
-        incomePct: percentChange(currentTotals.income, previousTotals.income),
-      },
+      trendChange,
       comparison,
       topCategories,
+      categoryFocus: buildCategoryFocus(topCategories),
       participants,
+      familyBehavior: buildFamilyBehavior(participants),
+      hero: buildHeroSummary(currentTotals, trendChange, periodMode),
+      forecast: buildForecast(dayStats, endIso),
       insights,
     };
   }
@@ -398,6 +562,7 @@
     buildTopCategories,
     buildParticipants,
     buildInsights,
+    buildHeroSummary,
     buildDailySums,
     percentChange,
     diffDaysInclusive,
