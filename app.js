@@ -6,8 +6,10 @@
   }
 
   const query = new URLSearchParams(window.location.search);
-  const chatId = Number(query.get("chat_id") || "0");
-  const currentUserId = Number(query.get("user_id") || "0");
+  const tgInitUserId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0);
+  const tgInitChatId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
+  const chatId = Number(query.get("chat_id") || String(tgInitChatId || 0));
+  const currentUserId = Number(query.get("user_id") || String(tgInitUserId || 0));
   const apiBaseParam = String(query.get("api_base") || "").trim();
 
   const state = {
@@ -123,6 +125,7 @@
     profileDetailInfoPage: document.getElementById("profileDetailInfoPage"),
     profileDetailSettingsPage: document.getElementById("profileDetailSettingsPage"),
     profileDetailSupportPage: document.getElementById("profileDetailSupportPage"),
+    profileDetailSupportComposePage: document.getElementById("profileDetailSupportComposePage"),
     profileDetailReviewPage: document.getElementById("profileDetailReviewPage"),
     profileDetailInfoUsername: document.getElementById("profileDetailInfoUsername"),
     profileDetailInfoTelegramId: document.getElementById("profileDetailInfoTelegramId"),
@@ -132,8 +135,8 @@
     profileDetailBirthDateInput: document.getElementById("profileDetailBirthDateInput"),
     profileDetailCurrencySelect: document.getElementById("profileDetailCurrencySelect"),
     profileDetailLanguageSelect: document.getElementById("profileDetailLanguageSelect"),
-    profileDetailSupportModeMessageBtn: document.getElementById("profileDetailSupportModeMessageBtn"),
-    profileDetailSupportModeBugBtn: document.getElementById("profileDetailSupportModeBugBtn"),
+    profileDetailOpenDevSupportBtn: document.getElementById("profileDetailOpenDevSupportBtn"),
+    profileDetailOpenBugSupportBtn: document.getElementById("profileDetailOpenBugSupportBtn"),
     profileDetailSupportMessageLabel: document.getElementById("profileDetailSupportMessageLabel"),
     profileDetailSupportMessageInput: document.getElementById("profileDetailSupportMessageInput"),
     profileDetailSupportPhotoWrap: document.getElementById("profileDetailSupportPhotoWrap"),
@@ -947,6 +950,20 @@
   }
 
   function profileDetailPageConfig(page) {
+    if (page === "support-message") {
+      return {
+        title: "Связь с разработчиком",
+        subtitle: "Напишите сообщение",
+        actionLabel: "Отправить",
+      };
+    }
+    if (page === "support-bug") {
+      return {
+        title: "Сообщить об ошибке",
+        subtitle: "Описание и фото (опционально)",
+        actionLabel: "Отправить",
+      };
+    }
     if (page === "settings") {
       return {
         title: "Настройки",
@@ -978,8 +995,6 @@
   function setProfileSupportKind(kind) {
     state.profile.supportKind = kind === "bug" ? "bug" : "message";
     const isBug = state.profile.supportKind === "bug";
-    els.profileDetailSupportModeMessageBtn.classList.toggle("active", !isBug);
-    els.profileDetailSupportModeBugBtn.classList.toggle("active", isBug);
     els.profileDetailSupportMessageLabel.textContent = isBug ? "Описание ошибки" : "Сообщение разработчику";
     els.profileDetailSupportMessageInput.placeholder = isBug
       ? "Что произошло, как повторить, что ожидали увидеть"
@@ -1026,10 +1041,15 @@
       return;
     }
 
-    if (page === "support") {
-      setProfileSupportKind(state.profile.supportKind || "message");
+    if (page === "support-message" || page === "support-bug") {
+      setProfileSupportKind(page === "support-bug" ? "bug" : "message");
       els.profileDetailSupportMessageInput.value = String(state.profile.supportMessage || "");
       renderSupportPhotoState();
+      return;
+    }
+
+    if (page === "support") {
+      setProfileSupportKind(state.profile.supportKind || "message");
       return;
     }
 
@@ -1072,6 +1092,10 @@
     els.profileDetailInfoPage.classList.toggle("hidden", page !== "info");
     els.profileDetailSettingsPage.classList.toggle("hidden", page !== "settings");
     els.profileDetailSupportPage.classList.toggle("hidden", page !== "support");
+    els.profileDetailSupportComposePage.classList.toggle(
+      "hidden",
+      !(page === "support-message" || page === "support-bug")
+    );
     els.profileDetailReviewPage.classList.toggle("hidden", page !== "review");
 
     syncProfileDetailInputsFromState();
@@ -1080,8 +1104,10 @@
       page === "review" &&
       (state.profile.reviewEditMode || !((state.profile.data || {}).latest_review)) &&
       Number(state.profile.reviewRating || 0) <= 0;
-    const isDisabled = state.profile.saving || reviewNeedsRating;
+    const isActionPage = page !== "support";
+    const isDisabled = !isActionPage || state.profile.saving || reviewNeedsRating;
     els.profileDetailSaveBtn.disabled = Boolean(isDisabled);
+    els.profileDetailActionsBar.classList.toggle("hidden", page === "support");
     if (page === "review" && !state.profile.reviewEditMode && (state.profile.data || {}).latest_review) {
       els.profileDetailSaveBtn.textContent = "Оценить заново";
     }
@@ -1279,7 +1305,7 @@
       await saveProfileSettingsPage();
       return;
     }
-    if (page === "support") {
+    if (page === "support-message" || page === "support-bug") {
       state.profile.supportMessage = String(els.profileDetailSupportMessageInput.value || "");
       await sendProfileSupport();
       return;
@@ -1297,7 +1323,14 @@
 
   async function openProfileDetail(page) {
     const normalized =
-      page === "settings" || page === "support" || page === "review" || page === "info" ? page : "info";
+      page === "settings" ||
+      page === "support" ||
+      page === "support-message" ||
+      page === "support-bug" ||
+      page === "review" ||
+      page === "info"
+        ? page
+        : "info";
     state.profile.detailPage = normalized;
     if (normalized === "review") {
       state.profile.reviewLoadedFromServer = false;
@@ -2314,19 +2347,24 @@
     });
 
     els.profileDetailBackBtn.addEventListener("click", async () => {
+      const page = String(state.profile.detailPage || "");
+      if (page === "support-message" || page === "support-bug") {
+        await openProfileDetail("support");
+        return;
+      }
       await openProfileScreen();
     });
     els.profileDetailSaveBtn.addEventListener("click", async () => {
       await submitProfileDetail();
     });
 
-    els.profileDetailSupportModeMessageBtn.addEventListener("click", () => {
-      setProfileSupportKind("message");
-      renderProfileDetailScreen();
+    els.profileDetailOpenDevSupportBtn.addEventListener("click", async () => {
+      state.profile.supportKind = "message";
+      await openProfileDetail("support-message");
     });
-    els.profileDetailSupportModeBugBtn.addEventListener("click", () => {
-      setProfileSupportKind("bug");
-      renderProfileDetailScreen();
+    els.profileDetailOpenBugSupportBtn.addEventListener("click", async () => {
+      state.profile.supportKind = "bug";
+      await openProfileDetail("support-bug");
     });
 
     els.profileDetailSupportMessageInput.addEventListener("input", () => {
@@ -2419,6 +2457,8 @@
       if (document.hidden) return;
       if (state.screen === "transactions") {
         await loadTransactions();
+      } else if (state.screen === "profile" || state.screen === "profile-detail") {
+        await loadProfile();
       } else if (state.screen === "home") {
         await loadOverview();
       }
@@ -2428,6 +2468,8 @@
       if (document.hidden || state.isLoading) return;
       if (state.screen === "transactions") {
         await loadTransactions();
+      } else if (state.screen === "profile" || state.screen === "profile-detail") {
+        await loadProfile();
       } else if (state.screen === "home") {
         await loadOverview();
       }
