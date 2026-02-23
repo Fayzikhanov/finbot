@@ -56,9 +56,7 @@
       detailPage: "",
       supportKind: "message",
       supportMessage: "",
-      supportPhotoDataUrl: "",
-      supportPhotoName: "",
-      supportPhotoMime: "",
+      supportPhotos: [],
       reviewRating: 0,
       reviewComment: "",
       reviewLoadedFromServer: false,
@@ -144,7 +142,7 @@
     profileDetailSupportAttachPhotoBtn: document.getElementById("profileDetailSupportAttachPhotoBtn"),
     profileDetailSupportRemovePhotoBtn: document.getElementById("profileDetailSupportRemovePhotoBtn"),
     profileDetailSupportPhotoMeta: document.getElementById("profileDetailSupportPhotoMeta"),
-    profileDetailSupportPhotoPreview: document.getElementById("profileDetailSupportPhotoPreview"),
+    profileDetailSupportPhotoGrid: document.getElementById("profileDetailSupportPhotoGrid"),
     profileDetailExistingReviewCard: document.getElementById("profileDetailExistingReviewCard"),
     profileDetailExistingReviewRating: document.getElementById("profileDetailExistingReviewRating"),
     profileDetailExistingReviewComment: document.getElementById("profileDetailExistingReviewComment"),
@@ -262,6 +260,8 @@
     EUR: "EUR",
     RUB: "RUB",
   };
+  const supportBugPhotoLimit = 3;
+  const supportBugPhotoMaxBytes = 4 * 1024 * 1024;
 
   function formatDateLabel(value) {
     if (!value) return "";
@@ -881,31 +881,97 @@
     return "";
   }
 
+  function supportPhotoItems() {
+    if (!Array.isArray(state.profile.supportPhotos)) {
+      state.profile.supportPhotos = [];
+    }
+    return state.profile.supportPhotos;
+  }
+
   function renderSupportPhotoState() {
     const isBug = state.profile.supportKind === "bug";
-    const hasPhoto = Boolean(state.profile.supportPhotoDataUrl);
+    const photos = supportPhotoItems();
+    const photoCount = photos.length;
+    const hasPhoto = photoCount > 0;
     els.profileDetailSupportPhotoWrap.classList.toggle("hidden", !isBug);
     els.profileDetailSupportRemovePhotoBtn.classList.toggle("hidden", !hasPhoto);
-    if (hasPhoto) {
-      els.profileDetailSupportPhotoMeta.textContent =
-        state.profile.supportPhotoName || "Фото выбрано";
-      els.profileDetailSupportPhotoPreview.src = state.profile.supportPhotoDataUrl;
-      els.profileDetailSupportPhotoPreview.classList.remove("hidden");
-    } else {
-      els.profileDetailSupportPhotoMeta.textContent = "Фото не выбрано";
-      els.profileDetailSupportPhotoPreview.removeAttribute("src");
-      els.profileDetailSupportPhotoPreview.classList.add("hidden");
+    els.profileDetailSupportAttachPhotoBtn.disabled = !isBug || photoCount >= supportBugPhotoLimit;
+    if (!isBug) {
+      return;
     }
+
+    if (hasPhoto) {
+      els.profileDetailSupportPhotoMeta.textContent = `Добавлено фото: ${photoCount}/${supportBugPhotoLimit}`;
+    } else {
+      els.profileDetailSupportPhotoMeta.textContent = "Фото не выбраны";
+    }
+
+    if (!els.profileDetailSupportPhotoGrid) return;
+    els.profileDetailSupportPhotoGrid.innerHTML = "";
+    els.profileDetailSupportPhotoGrid.classList.toggle("hidden", !hasPhoto);
+    photos.forEach((photo, index) => {
+      const item = document.createElement("div");
+      item.className = "profile-photo-item";
+
+      const thumb = document.createElement("img");
+      thumb.className = "profile-photo-thumb";
+      thumb.alt = `Фото ${index + 1}`;
+      thumb.src = String((photo && photo.dataUrl) || "");
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "profile-photo-remove-btn";
+      removeBtn.setAttribute("aria-label", `Удалить фото ${index + 1}`);
+      removeBtn.textContent = "×";
+      removeBtn.addEventListener("click", () => {
+        removeSupportPhotoAt(index);
+      });
+
+      const name = document.createElement("div");
+      name.className = "profile-photo-item-name";
+      name.textContent = String((photo && photo.name) || `Фото ${index + 1}`);
+
+      item.appendChild(thumb);
+      item.appendChild(removeBtn);
+      item.appendChild(name);
+      els.profileDetailSupportPhotoGrid.appendChild(item);
+    });
   }
 
   function clearSupportPhoto() {
-    state.profile.supportPhotoDataUrl = "";
-    state.profile.supportPhotoName = "";
-    state.profile.supportPhotoMime = "";
+    state.profile.supportPhotos = [];
     if (els.profileDetailSupportPhotoInput) {
       els.profileDetailSupportPhotoInput.value = "";
     }
     renderSupportPhotoState();
+  }
+
+  function removeSupportPhotoAt(index) {
+    const photos = supportPhotoItems();
+    if (index < 0 || index >= photos.length) return;
+    photos.splice(index, 1);
+    if (els.profileDetailSupportPhotoInput) {
+      els.profileDetailSupportPhotoInput.value = "";
+    }
+    renderSupportPhotoState();
+  }
+
+  function readImageFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        if (!result.startsWith("data:")) {
+          reject(new Error("Не удалось прочитать фото"));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => {
+        reject(new Error("Не удалось прочитать фото"));
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   function renderProfileHeader() {
@@ -1265,7 +1331,8 @@
   async function sendProfileSupport() {
     const kind = state.profile.supportKind === "bug" ? "bug" : "message";
     const message = String(els.profileDetailSupportMessageInput.value || "").trim();
-    const hasPhoto = kind === "bug" && Boolean(state.profile.supportPhotoDataUrl);
+    const supportPhotos = kind === "bug" ? supportPhotoItems() : [];
+    const hasPhoto = kind === "bug" && supportPhotos.length > 0;
     if (!message && !(kind === "bug" && hasPhoto)) {
       showToast(kind === "bug" ? "Опишите ошибку" : "Введите сообщение");
       return;
@@ -1277,9 +1344,14 @@
       await postJsonWithFallback("support", {
         kind,
         message: message || (kind === "bug" && hasPhoto ? "Фото без описания" : ""),
-        photo_base64: kind === "bug" ? state.profile.supportPhotoDataUrl || "" : "",
-        photo_name: kind === "bug" ? state.profile.supportPhotoName || "" : "",
-        photo_mime: kind === "bug" ? state.profile.supportPhotoMime || "" : "",
+        photos:
+          kind === "bug"
+            ? supportPhotos.map((photo) => ({
+                photo_base64: String((photo && photo.dataUrl) || ""),
+                photo_name: String((photo && photo.name) || "bug-report.jpg"),
+                photo_mime: String((photo && photo.mime) || "image/jpeg"),
+              }))
+            : [],
       });
       state.profile.supportMessage = "";
       els.profileDetailSupportMessageInput.value = "";
@@ -2419,40 +2491,60 @@
     });
 
     els.profileDetailSupportPhotoInput.addEventListener("change", () => {
-      const file = els.profileDetailSupportPhotoInput.files && els.profileDetailSupportPhotoInput.files[0];
-      if (!file) {
-        clearSupportPhoto();
-        return;
-      }
-      const mime = String(file.type || "").toLowerCase();
-      if (!mime.startsWith("image/")) {
-        showToast("Нужен файл изображения");
-        clearSupportPhoto();
-        return;
-      }
-      if (Number(file.size || 0) > 4 * 1024 * 1024) {
-        showToast("Фото слишком большое (до 4 МБ)");
-        clearSupportPhoto();
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === "string" ? reader.result : "";
-        if (!result.startsWith("data:")) {
-          showToast("Не удалось прочитать фото");
-          clearSupportPhoto();
-          return;
+      const selectedFiles = Array.from(els.profileDetailSupportPhotoInput.files || []);
+      if (!selectedFiles.length) {
+        if (els.profileDetailSupportPhotoInput) {
+          els.profileDetailSupportPhotoInput.value = "";
         }
-        state.profile.supportPhotoDataUrl = result;
-        state.profile.supportPhotoName = String(file.name || "bug-report.jpg");
-        state.profile.supportPhotoMime = mime || "image/jpeg";
-        renderSupportPhotoState();
-      };
-      reader.onerror = () => {
-        showToast("Не удалось прочитать фото");
-        clearSupportPhoto();
-      };
-      reader.readAsDataURL(file);
+        return;
+      }
+      const currentPhotos = supportPhotoItems();
+      const freeSlots = Math.max(0, supportBugPhotoLimit - currentPhotos.length);
+      if (freeSlots <= 0) {
+        showToast(`Можно добавить до ${supportBugPhotoLimit} фото`);
+        els.profileDetailSupportPhotoInput.value = "";
+        return;
+      }
+
+      const candidates = selectedFiles.slice(0, freeSlots);
+      if (selectedFiles.length > freeSlots) {
+        showToast(`Добавлено только ${freeSlots} фото (лимит ${supportBugPhotoLimit})`);
+      }
+
+      const invalidType = candidates.find((file) => !String(file.type || "").toLowerCase().startsWith("image/"));
+      if (invalidType) {
+        showToast("Нужны только файлы изображений");
+        els.profileDetailSupportPhotoInput.value = "";
+        return;
+      }
+      const tooLarge = candidates.find((file) => Number(file.size || 0) > supportBugPhotoMaxBytes);
+      if (tooLarge) {
+        showToast("Каждое фото должно быть до 4 МБ");
+        els.profileDetailSupportPhotoInput.value = "";
+        return;
+      }
+
+      Promise.all(
+        candidates.map(async (file) => ({
+          dataUrl: await readImageFileAsDataUrl(file),
+          name: String(file.name || "bug-report.jpg"),
+          mime: String(file.type || "").toLowerCase() || "image/jpeg",
+        }))
+      )
+        .then((loadedPhotos) => {
+          const photos = supportPhotoItems();
+          photos.push(...loadedPhotos.slice(0, Math.max(0, supportBugPhotoLimit - photos.length)));
+          if (els.profileDetailSupportPhotoInput) {
+            els.profileDetailSupportPhotoInput.value = "";
+          }
+          renderSupportPhotoState();
+        })
+        .catch((err) => {
+          showToast(String((err && err.message) || "").trim() || "Не удалось прочитать фото");
+          if (els.profileDetailSupportPhotoInput) {
+            els.profileDetailSupportPhotoInput.value = "";
+          }
+        });
     });
 
     els.profileDetailReviewCommentInput.addEventListener("input", () => {
