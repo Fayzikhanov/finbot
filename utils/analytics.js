@@ -382,7 +382,7 @@
         title: `${periodText} вы в плюсе`,
         valueType: "money",
         value: balance,
-        subtitle: "Баланс выше нуля",
+        subtitle: "Вы тратите меньше, чем зарабатываете",
       };
     }
 
@@ -408,11 +408,11 @@
 
     if (balance < 0) {
       return {
-        tone: "neutral",
+        tone: "warning",
         title: `${periodText} вы в минусе`,
         valueType: "money",
         value: Math.abs(balance),
-        subtitle: "Баланс отрицательный",
+        subtitle: "Расходы превышают доходы",
       };
     }
 
@@ -443,9 +443,9 @@
     let statement = "";
     if (leader && Number(leader.expense || 0) > 0) {
       if (dominant) {
-        statement = `${leader.name} формирует ${Math.round(leaderSharePct)}% семейных расходов`;
+        statement = `${leader.name} — основной источник расходов в семье`;
       } else {
-        statement = `Основной вклад в расходы у ${leader.name} (${Math.round(leaderSharePct)}%)`;
+        statement = "Расходы распределены равномерно";
       }
     }
 
@@ -461,57 +461,114 @@
   function buildForecast(dayStats, endIso) {
     const avgExpensePerDay = Number((dayStats && dayStats.avgExpensePerDay) || 0);
     const monthForecast = monthForecastFromAverage(avgExpensePerDay, endIso);
+    const currentExpense = Number((dayStats && dayStats.currentExpenseTotal) || 0);
+    const projectedAdditionalExpense = Number(monthForecast.projectedExpenseToMonthEnd || 0);
+    const projectedExpenseToMonthEnd = currentExpense + projectedAdditionalExpense;
     return {
-      avgExpensePerDay,
+      avgExpensePerDay: Math.round(avgExpensePerDay),
       remainingDaysInMonth: Number(monthForecast.remainingDaysInMonth || 0),
-      projectedExpenseToMonthEnd: Number(monthForecast.projectedExpenseToMonthEnd || 0),
+      projectedAdditionalExpense: Math.round(projectedAdditionalExpense),
+      projectedExpenseToMonthEnd: Math.round(projectedExpenseToMonthEnd),
       applicable: Boolean(monthForecast.applicable),
       monthEndIso: String(monthForecast.monthEndIso || ""),
     };
   }
 
-  function buildInterpretationInsights(baseInsights) {
+  function buildFinancialStatus(currentTotals, forecast) {
+    const income = Number((currentTotals && currentTotals.income) || 0);
+    const expense = Number((currentTotals && currentTotals.expense) || 0);
+    const balance = Number((currentTotals && currentTotals.balance) || 0);
+    const projected = Number((forecast && forecast.projectedExpenseToMonthEnd) || 0);
+    const incomeThreshold = income > 0 ? income * 0.85 : 0;
+
+    if (expense > income || projected > income) {
+      return {
+        tone: "danger",
+        label: "Финансовое состояние: Расходы превышают доходы",
+        description: "Текущий темп расходов выше вашего дохода.",
+      };
+    }
+
+    if (balance > 0 && income > 0 && projected > incomeThreshold) {
+      return {
+        tone: "warning",
+        label: "Финансовое состояние: Есть риск роста расходов",
+        description: "Прогноз расходов близок к уровню дохода.",
+      };
+    }
+
+    if (balance > 0 && projected <= income) {
+      return {
+        tone: "stable",
+        label: "Финансовое состояние: Стабильное",
+        description: "Доход покрывает текущий темп расходов.",
+      };
+    }
+
+    return {
+      tone: "neutral",
+      label: "Финансовое состояние: Нейтральное",
+      description: "Нужны данные за больший период для уверенной оценки.",
+    };
+  }
+
+  function streakPeriodLabel(periodMode, count) {
+    const n = Number(count || 0);
+    if (periodMode === "month") return n >= 5 ? "месяцев" : n >= 2 && n <= 4 ? "месяца" : "месяц";
+    if (periodMode === "week") return n >= 2 && n <= 4 ? "недели" : "недель";
+    if (periodMode === "year") return n === 1 ? "год" : n >= 2 && n <= 4 ? "года" : "лет";
+    if (periodMode === "today") return n >= 2 && n <= 4 ? "дня" : "дней";
+    return n >= 2 && n <= 4 ? "периода" : "периодов";
+  }
+
+  function buildGamification(periodMode, positiveBalanceStreak) {
+    const count = Number(positiveBalanceStreak || 0);
+    if (!Number.isFinite(count) || count < 2) return null;
+    return {
+      positiveBalanceStreak: count,
+      badgeText: `${count} ${streakPeriodLabel(periodMode, count)} подряд в плюсе`,
+    };
+  }
+
+  function buildInterpretationInsights(baseInsights, categoryFocus) {
     const rows = Array.isArray(baseInsights) ? baseInsights : [];
-    return rows.slice(0, 3).map((item) => {
-      if (item.key === "category-growth") {
-        return {
-          key: "category-growth",
-          kind: "warning",
-          title: "Категория с ростом",
-          categoryLabel: String(item.value || ""),
-          amount: Number(item.amount || 0),
-          pct: item.pct,
-        };
-      }
-      if (item.key === "category-drop") {
-        return {
-          key: "category-drop",
-          kind: "positive",
-          title: "Категория со снижением",
-          categoryLabel: String(item.value || ""),
-          amount: Number(item.amount || 0),
-          pct: item.pct,
-        };
-      }
+    const mapped = [];
+    const primary = categoryFocus && categoryFocus.primary ? categoryFocus.primary : null;
+    if (primary && Number(primary.sharePct || 0) > 0) {
+      mapped.push({
+        key: "category-share",
+        kind: "neutral",
+        categoryLabel: String(primary.label || ""),
+        sharePct: Math.round(Number(primary.sharePct || 0)),
+      });
+    }
+
+    rows.forEach((item) => {
       if (item.key === "max-day") {
-        return {
+        mapped.push({
           key: "max-day",
           kind: "neutral",
-          title: "Самый затратный день",
           dateIso: String(item.value || ""),
-          amount: Number(item.amount || 0),
-        };
-      }
-      if (item.key === "avg-day-expense") {
-        return {
+          amount: Math.round(Number(item.amount || 0)),
+        });
+      } else if (item.key === "avg-day-expense") {
+        mapped.push({
           key: "avg-day-expense",
           kind: "neutral",
-          title: "Средний расход в день",
-          amount: Number(item.amount || 0),
-        };
+          amount: Math.round(Number(item.amount || 0)),
+        });
+      } else if (item.key === "category-growth" && !primary) {
+        mapped.push({
+          key: "category-growth",
+          kind: "warning",
+          categoryLabel: String(item.value || ""),
+          pct: item.pct,
+          amount: Math.round(Number(item.amount || 0)),
+        });
       }
-      return item;
     });
+
+    return mapped.slice(0, 3);
   }
 
   function buildAnalyticsReport(options) {
@@ -521,18 +578,26 @@
     const endIso = String((options && options.endIso) || "");
     const periodMode = String((options && options.periodMode) || "custom");
     const participantBuckets = Array.isArray(options && options.participantBuckets) ? options.participantBuckets : [];
+    const positiveBalanceStreak = Number((options && options.positiveBalanceStreak) || 0);
 
     const currentTotals = buildTotals(currentItems);
     const previousTotals = buildTotals(previousItems);
     const comparison = buildPeriodComparison(currentItems, previousItems);
     const topCategories = buildTopCategories(currentItems, previousItems, 3);
+    const categoryFocus = buildCategoryFocus(topCategories);
     const participants = buildParticipants(participantBuckets);
     const dayStats = buildExpenseDayStats(currentItems, startIso, endIso);
+    dayStats.currentExpenseTotal = currentTotals.expense;
     const trendChange = {
       expensePct: percentChange(currentTotals.expense, previousTotals.expense),
       incomePct: percentChange(currentTotals.income, previousTotals.income),
     };
-    const insights = buildInterpretationInsights(buildInsights(currentItems, previousItems, startIso, endIso));
+    const forecast = buildForecast(dayStats, endIso);
+    const insights = buildInterpretationInsights(
+      buildInsights(currentItems, previousItems, startIso, endIso),
+      categoryFocus
+    );
+    const previousPeriodTotal = Number(previousTotals.expense || 0) + Number(previousTotals.income || 0);
 
     return {
       period: {
@@ -543,14 +608,17 @@
       },
       totals: currentTotals,
       previousTotals,
+      hasPreviousPeriodData: previousPeriodTotal > 0,
       trendChange,
       comparison,
       topCategories,
-      categoryFocus: buildCategoryFocus(topCategories),
+      categoryFocus,
       participants,
       familyBehavior: buildFamilyBehavior(participants),
       hero: buildHeroSummary(currentTotals, trendChange, periodMode),
-      forecast: buildForecast(dayStats, endIso),
+      forecast,
+      financialStatus: buildFinancialStatus(currentTotals, forecast),
+      gamification: buildGamification(periodMode, positiveBalanceStreak),
       insights,
     };
   }
