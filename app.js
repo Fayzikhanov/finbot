@@ -52,6 +52,7 @@
     analyticsPage: {
       initialized: false,
       report: null,
+      scopeBeforeOpen: null,
     },
     categoriesByKind: { expense: [], income: [] },
     addForm: {
@@ -125,8 +126,10 @@
     balanceTrendSvg: document.getElementById("balanceTrendSvg"),
     balanceTrendLegend: document.getElementById("balanceTrendLegend"),
     analyticsHero: document.getElementById("analyticsHero"),
+    analyticsStatus: document.getElementById("analyticsStatus"),
     analyticsForecast: document.getElementById("analyticsForecast"),
     analyticsTrendChanges: document.getElementById("analyticsTrendChanges"),
+    analyticsComparisonSection: document.getElementById("analyticsComparisonSection"),
     analyticsComparisonCard: document.getElementById("analyticsComparisonCard"),
     analyticsTopCategories: document.getElementById("analyticsTopCategories"),
     analyticsParticipants: document.getElementById("analyticsParticipants"),
@@ -208,6 +211,8 @@
     navConverter: document.getElementById("navConverter"),
     navProfile: document.getElementById("navProfile"),
   };
+
+  els.scopeWrap = els.openScopeBtn ? els.openScopeBtn.closest(".scope-wrap") : null;
 
   const chartPalette = [
     "#8B95D6",
@@ -1518,11 +1523,25 @@
   }
 
   function showScreen(name) {
+    const prevScreen = state.screen;
+    if (prevScreen === "analytics" && name !== "analytics") {
+      const restoreScope = String(state.analyticsPage.scopeBeforeOpen || "").trim();
+      if (restoreScope) {
+        state.scope = restoreScope;
+        const restoreOption = (state.scopeOptions || []).find((item) => String(item.key || "") === restoreScope);
+        if (restoreOption && els.scopeLabel) {
+          els.scopeLabel.textContent = String(restoreOption.label || "Общие расходы");
+        }
+      }
+      state.analyticsPage.scopeBeforeOpen = null;
+    }
     state.screen = name;
     const isAddScreen = name === "add";
+    const isAnalyticsScreen = name === "analytics";
     const isProfileScreen = name === "profile";
     const isProfileDetailScreen = name === "profile-detail";
     els.appRoot.classList.toggle("is-add-screen", isAddScreen);
+    els.appRoot.classList.toggle("is-analytics-screen", isAnalyticsScreen);
     els.appRoot.classList.toggle("is-profile-screen", isProfileScreen);
     els.appRoot.classList.toggle("is-profile-detail-screen", isProfileDetailScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
@@ -1541,7 +1560,7 @@
     els.navProfile.classList.toggle("active", name === "profile" || name === "profile-detail");
     els.navAdd.classList.toggle("hidden", name === "add" || name === "profile-detail");
 
-    if (isAddScreen || isProfileScreen || isProfileDetailScreen) {
+    if (isAddScreen || isAnalyticsScreen || isProfileScreen || isProfileDetailScreen) {
       closeScopeMenu();
       closeDateSheet();
       setStatusBanner("", "info");
@@ -1551,7 +1570,7 @@
   function showPlaceholder(title) {
     els.placeholderTitle.textContent = title;
     state.screen = "placeholder";
-    els.appRoot.classList.remove("is-add-screen", "is-profile-screen", "is-profile-detail-screen");
+    els.appRoot.classList.remove("is-add-screen", "is-analytics-screen", "is-profile-screen", "is-profile-detail-screen");
     els.homeScreen.classList.add("hidden");
     els.transactionsScreen.classList.add("hidden");
     els.analyticsScreen.classList.add("hidden");
@@ -2300,6 +2319,30 @@
     `;
   }
 
+  function renderAnalyticsStatus(report) {
+    if (!els.analyticsStatus) return;
+    const status = report && report.financialStatus ? report.financialStatus : null;
+    const game = report && report.gamification ? report.gamification : null;
+    if (!status) {
+      els.analyticsStatus.innerHTML = "";
+      return;
+    }
+    const tone = String(status.tone || "neutral");
+    const iconName = tone === "stable" ? "shield-check" : tone === "warning" ? "circle-alert" : tone === "danger" ? "octagon-alert" : "info";
+    els.analyticsStatus.innerHTML = `
+      <div class="analytics-status-card ${tone}">
+        <div class="analytics-status-head">
+          <div class="analytics-status-main">
+            <span class="analytics-status-icon ${tone}">${lucideSvg(iconName, { width: 14, height: 14 })}</span>
+            <span class="analytics-status-label">${escapeHtml(status.label || "Финансовое состояние")}</span>
+          </div>
+          ${game && game.badgeText ? `<span class="analytics-status-badge">${escapeHtml(game.badgeText)}</span>` : ""}
+        </div>
+        <div class="analytics-status-text">${escapeHtml(status.description || "")}</div>
+      </div>
+    `;
+  }
+
   function renderAnalyticsForecast(report) {
     if (!els.analyticsForecast) return;
     const forecast = report && report.forecast ? report.forecast : null;
@@ -2318,11 +2361,16 @@
     }
     const remainingDays = Number(forecast.remainingDaysInMonth || 0);
     const projected = Number(forecast.projectedExpenseToMonthEnd || 0);
+    const income = Number((report && report.totals && report.totals.income) || 0);
+    const forecastWarn = projected > income && projected > 0;
     els.analyticsForecast.innerHTML = `
-      <div class="analytics-forecast-card">
+      <div class="analytics-forecast-card ${forecastWarn ? "warning" : "positive"}">
         <div class="analytics-forecast-title">Прогноз до конца месяца</div>
         <div class="analytics-forecast-text">
           Если сохранится текущий темп, расходы составят ~ ${fmtMoney(projected, false)}
+        </div>
+        <div class="analytics-forecast-note ${forecastWarn ? "warning" : "positive"}">
+          ${forecastWarn ? "При текущем темпе вы уйдёте в минус" : "Вы останетесь в плюсе при текущем темпе"}
         </div>
         <div class="analytics-forecast-meta">
           ${remainingDays > 0
@@ -2335,26 +2383,49 @@
 
   function renderAnalyticsTrendChanges(report) {
     if (!els.analyticsTrendChanges) return;
+    const prev = report && report.previousTotals ? report.previousTotals : { expense: 0, income: 0 };
+    const showExpense = Number(prev.expense || 0) > 0;
+    const showIncome = Number(prev.income || 0) > 0;
+    if (!showExpense && !showIncome) {
+      els.analyticsTrendChanges.innerHTML = "";
+      els.analyticsTrendChanges.classList.add("hidden");
+      return;
+    }
+    els.analyticsTrendChanges.classList.remove("hidden");
     const expenseClass = analyticsPctClass(report && report.trendChange ? report.trendChange.expensePct : 0, false);
     const incomeClass = analyticsPctClass(report && report.trendChange ? report.trendChange.incomePct : 0, true);
-    els.analyticsTrendChanges.innerHTML = `
+    const blocks = [];
+    if (showExpense) {
+      blocks.push(`
       <div class="analytics-delta-card">
         <div class="analytics-delta-label">Расходы к прошлому периоду</div>
         <div class="analytics-delta-value ${expenseClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.expensePct : null)}
         </div>
-      </div>
+      </div>`);
+    }
+    if (showIncome) {
+      blocks.push(`
       <div class="analytics-delta-card">
         <div class="analytics-delta-label">Доходы к прошлому периоду</div>
         <div class="analytics-delta-value ${incomeClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.incomePct : null)}
         </div>
-      </div>
-    `;
+      </div>`);
+    }
+    els.analyticsTrendChanges.innerHTML = blocks.join("");
   }
 
   function renderAnalyticsComparisonCard(report) {
     if (!els.analyticsComparisonCard) return;
+    const hasPreviousData = Boolean(report && report.hasPreviousPeriodData);
+    if (els.analyticsComparisonSection) {
+      els.analyticsComparisonSection.classList.toggle("hidden", !hasPreviousData);
+    }
+    if (!hasPreviousData) {
+      els.analyticsComparisonCard.innerHTML = "";
+      return;
+    }
     const cmp = report && report.comparison ? report.comparison : null;
     if (!cmp || !cmp.metrics) {
       els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml("Нет данных для сравнения периодов.");
@@ -2365,7 +2436,7 @@
     const rowHtml = (label, key, showPct) => {
       const metric = metrics[key] || { deltaAbs: 0, deltaPct: null, direction: "neutral" };
       const cls = analyticsDirectionClass(metric.direction);
-      const pctPart = showPct
+      const pctPart = showPct && metric.deltaPct !== null
         ? `<span class="analytics-compact-delta-pct ${cls}">(${fmtSignedPercentNullable(metric.deltaPct)})</span>`
         : "";
       return `
@@ -2452,8 +2523,8 @@
           </div>
           <div class="analytics-family-meta">
             <span>${Math.round(Number((leader && leader.sharePct) || 0))}% семейных расходов</span>
-            <span>Средний чек ${fmtMoney((leader && leader.avgCheck) || 0, false)}</span>
-            <span>${Number((leader && leader.txCount) || 0)} транз.</span>
+            <span class="muted">Средний чек ${fmtMoney((leader && leader.avgCheck) || 0, false)}</span>
+            <span class="muted">${Number((leader && leader.txCount) || 0)} транз.</span>
           </div>
         </div>
       </div>
@@ -2482,17 +2553,21 @@
     }
 
     function insightIcon(item) {
+      if (item.key === "category-share") return "pie-chart";
       if (item.key === "max-day") return "calendar-range";
       if (item.key === "avg-day-expense") return "gauge";
       return item.kind === "positive" ? "trending-down" : "trending-up";
     }
 
     function insightTitle(item) {
+      if (item.key === "category-share") {
+        return `${Math.round(Number(item.sharePct || 0))}% расходов приходится на ${item.categoryLabel || "основную категорию"}`;
+      }
       if (item.key === "category-growth") {
-        return `Расходы на "${item.categoryLabel || "категорию"}" выросли`;
+        return `${item.categoryLabel || "Категория"}: рост расходов`;
       }
       if (item.key === "category-drop") {
-        return `Расходы на "${item.categoryLabel || "категорию"}" снизились`;
+        return `${item.categoryLabel || "Категория"}: снижение расходов`;
       }
       if (item.key === "max-day") {
         return `${formatDateLabel(item.dateIso)} — самый затратный день`;
@@ -2504,6 +2579,9 @@
     }
 
     function insightText(item) {
+      if (item.key === "category-share") {
+        return "";
+      }
       if (item.key === "category-growth") {
         const pctText = fmtSignedPercentNullable(item.pct);
         return `${fmtMoney(item.amount || 0, true)} (${pctText}) к прошлому периоду.`;
@@ -2528,7 +2606,7 @@
           <div class="analytics-insight-icon ${escapeHtml(item.kind || "neutral")}">${lucideSvg(insightIcon(item), { width: 16, height: 16 })}</div>
           <div>
             <div class="analytics-insight-title">${escapeHtml(insightTitle(item))}</div>
-            <div class="analytics-insight-text">${escapeHtml(insightText(item))}</div>
+            ${insightText(item) ? `<div class="analytics-insight-text">${escapeHtml(insightText(item))}</div>` : ""}
           </div>
         </div>
       `)
@@ -2539,8 +2617,11 @@
     if (els.balanceTrendSvg) els.balanceTrendSvg.innerHTML = "";
     if (els.balanceTrendLegend) els.balanceTrendLegend.innerHTML = "";
     if (els.analyticsHero) els.analyticsHero.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsStatus) els.analyticsStatus.innerHTML = "";
     if (els.analyticsForecast) els.analyticsForecast.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsTrendChanges) els.analyticsTrendChanges.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsTrendChanges) els.analyticsTrendChanges.classList.remove("hidden");
+    if (els.analyticsComparisonSection) els.analyticsComparisonSection.classList.remove("hidden");
     if (els.analyticsComparisonCard) els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsTopCategories) els.analyticsTopCategories.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsParticipants) els.analyticsParticipants.innerHTML = analyticsEmptyHtml(message);
@@ -2553,6 +2634,7 @@
       return;
     }
     renderAnalyticsHero(report);
+    renderAnalyticsStatus(report);
     renderAnalyticsForecast(report);
     renderAnalyticsTrendChanges(report);
     renderAnalyticsComparisonCard(report);
@@ -2654,6 +2736,10 @@
     return Array.isArray(payload && payload.items) ? payload.items : [];
   }
 
+  async function fetchOverviewPayload(overrides) {
+    return fetchJsonWithFallback("overview", overrides);
+  }
+
   async function loadAnalyticsParticipantBuckets(periodObj) {
     const members = Array.isArray(state.memberOptions) ? state.memberOptions : [];
     if (!members.length) return [];
@@ -2678,6 +2764,42 @@
     return Promise.all(tasks);
   }
 
+  async function loadAnalyticsPositiveBalanceStreak(periodObj, currentBalance) {
+    const start = String((periodObj && periodObj.start) || state.start || "").trim();
+    const end = String((periodObj && periodObj.end) || state.end || "").trim();
+    const mode = String((periodObj && periodObj.mode) || state.period || "custom");
+    if (Number(currentBalance || 0) <= 0 || !start || !end) return 0;
+
+    let streak = 1;
+    let cursorStart = start;
+    let cursorEnd = end;
+    const maxChecks = 5;
+
+    for (let i = 0; i < maxChecks; i += 1) {
+      const prevRange = getComparisonRange(mode, cursorStart, cursorEnd);
+      if (!prevRange) break;
+      try {
+        const prevOverview = await fetchOverviewPayload({
+          scope: "all",
+          period: "custom",
+          start: prevRange.start,
+          end: prevRange.end,
+        });
+        const prevSummary = prevOverview && prevOverview.summary ? prevOverview.summary : {};
+        const prevBalance = Number(prevSummary.balance || 0);
+        if (prevBalance <= 0) break;
+        streak += 1;
+        cursorStart = prevRange.start;
+        cursorEnd = prevRange.end;
+      } catch (err) {
+        console.error("analytics streak fetch failed", err);
+        break;
+      }
+    }
+
+    return streak;
+  }
+
   async function loadAnalyticsPage() {
     if (!state.chatId) {
       setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
@@ -2693,11 +2815,11 @@
 
     state.isLoading = true;
     try {
-      const overviewPayload = await fetchJsonWithFallback("overview");
+      const overviewPayload = await fetchOverviewPayload({ scope: "all" });
       const { periodObj } = applyOverviewMeta(overviewPayload);
 
       const currentItems = await fetchTransactionsItems({
-        scope: state.scope,
+        scope: "all",
         period: periodObj.mode || state.period,
         start: periodObj.start || state.start,
         end: periodObj.end || state.end,
@@ -2711,7 +2833,7 @@
       let previousItems = [];
       if (compareRange) {
         previousItems = await fetchTransactionsItems({
-          scope: state.scope,
+          scope: "all",
           period: "custom",
           start: compareRange.start,
           end: compareRange.end,
@@ -2720,6 +2842,8 @@
 
       const participantBuckets = await loadAnalyticsParticipantBuckets(periodObj);
       state.currentTransactions = currentItems;
+      const currentSummary = overviewPayload && overviewPayload.summary ? overviewPayload.summary : {};
+      const positiveBalanceStreak = await loadAnalyticsPositiveBalanceStreak(periodObj, Number(currentSummary.balance || 0));
 
       const report = utils.buildAnalyticsReport({
         currentItems,
@@ -2728,6 +2852,7 @@
         endIso: periodObj.end || state.end,
         periodMode: periodObj.mode || state.period,
         participantBuckets,
+        positiveBalanceStreak,
       });
 
       state.analyticsPage.report = report;
@@ -2753,6 +2878,9 @@
   async function openAnalyticsScreen() {
     els.screenTitle.textContent = "Аналитика";
     els.navAdd.classList.remove("hidden");
+    if (state.screen !== "analytics" && !state.analyticsPage.scopeBeforeOpen) {
+      state.analyticsPage.scopeBeforeOpen = state.scope;
+    }
     showScreen("analytics");
     if (!state.analyticsPage.initialized) {
       state.analyticsPage.initialized = true;
