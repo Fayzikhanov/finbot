@@ -33,14 +33,6 @@
 
       <main id="homeScreen" class="screen">
         <section class="summary-stack">
-          <button id="tabBalance" class="card balance-main tab-card" data-analytics="balance" type="button">
-            <div class="card-head">
-              <i data-lucide="wallet"></i>
-              <div class="card-title">Баланс</div>
-            </div>
-            <div id="balanceValue" class="card-value main">0 сум</div>
-          </button>
-
           <div class="cards-grid">
             <button id="tabIncome" class="card metric tab-card" data-analytics="income" type="button">
               <div class="card-head">
@@ -57,20 +49,19 @@
               <div id="expenseValue" class="card-value">0 сум</div>
             </button>
           </div>
+
+          <div class="card metric">
+            <div class="card-head">
+              <i data-lucide="repeat-2"></i>
+              <div class="card-title">Семейные переводы</div>
+            </div>
+            <div id="familyTransfersValue" class="card-value">0 сум</div>
+          </div>
         </section>
 
         <section id="analyticsPanel" class="panel expense-breakdown">
           <div class="panel-head">
             <h2 id="chartSectionTitle">Разбивка расходов</h2>
-          </div>
-
-          <div id="balanceAnalytics" class="balance-analytics hidden">
-            <div id="balanceMainValue" class="balance-main-value">0 сум</div>
-            <div id="balanceDelta" class="balance-delta neutral">—</div>
-            <div class="balance-trend-card">
-              <svg id="balanceTrendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"></svg>
-              <div id="balanceTrendLegend" class="trend-legend"></div>
-            </div>
           </div>
 
           <div id="breakdownView">
