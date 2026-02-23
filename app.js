@@ -54,9 +54,13 @@
       detailPage: "",
       supportKind: "message",
       supportMessage: "",
+      supportPhotoDataUrl: "",
+      supportPhotoName: "",
+      supportPhotoMime: "",
       reviewRating: 0,
       reviewComment: "",
       reviewLoadedFromServer: false,
+      reviewEditMode: false,
     },
   };
 
@@ -132,6 +136,16 @@
     profileDetailSupportModeBugBtn: document.getElementById("profileDetailSupportModeBugBtn"),
     profileDetailSupportMessageLabel: document.getElementById("profileDetailSupportMessageLabel"),
     profileDetailSupportMessageInput: document.getElementById("profileDetailSupportMessageInput"),
+    profileDetailSupportPhotoWrap: document.getElementById("profileDetailSupportPhotoWrap"),
+    profileDetailSupportPhotoInput: document.getElementById("profileDetailSupportPhotoInput"),
+    profileDetailSupportAttachPhotoBtn: document.getElementById("profileDetailSupportAttachPhotoBtn"),
+    profileDetailSupportRemovePhotoBtn: document.getElementById("profileDetailSupportRemovePhotoBtn"),
+    profileDetailSupportPhotoMeta: document.getElementById("profileDetailSupportPhotoMeta"),
+    profileDetailSupportPhotoPreview: document.getElementById("profileDetailSupportPhotoPreview"),
+    profileDetailExistingReviewCard: document.getElementById("profileDetailExistingReviewCard"),
+    profileDetailExistingReviewRating: document.getElementById("profileDetailExistingReviewRating"),
+    profileDetailExistingReviewComment: document.getElementById("profileDetailExistingReviewComment"),
+    profileDetailReviewAgainBtn: document.getElementById("profileDetailReviewAgainBtn"),
     profileDetailRatingStars: document.getElementById("profileDetailRatingStars"),
     profileDetailRatingMeta: document.getElementById("profileDetailRatingMeta"),
     profileDetailReviewCommentInput: document.getElementById("profileDetailReviewCommentInput"),
@@ -802,6 +816,57 @@
     return text || (fallback || "Не указано");
   }
 
+  function normalizeBirthDateForStorage(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (match) {
+      const [, y, m, d] = match;
+      const parsed = new Date(`${y}-${m}-${d}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) return `${y}-${m}-${d}`;
+    }
+    match = /^(\d{2})[-/.](\d{2})[-/.](\d{4})$/.exec(raw);
+    if (match) {
+      const [, d, m, y] = match;
+      const parsed = new Date(`${y}-${m}-${d}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) return `${y}-${m}-${d}`;
+    }
+    return raw;
+  }
+
+  function birthDateForInput(value) {
+    const normalized = normalizeBirthDateForStorage(value);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+    return "";
+  }
+
+  function renderSupportPhotoState() {
+    const isBug = state.profile.supportKind === "bug";
+    const hasPhoto = Boolean(state.profile.supportPhotoDataUrl);
+    els.profileDetailSupportPhotoWrap.classList.toggle("hidden", !isBug);
+    els.profileDetailSupportRemovePhotoBtn.classList.toggle("hidden", !hasPhoto);
+    if (hasPhoto) {
+      els.profileDetailSupportPhotoMeta.textContent =
+        state.profile.supportPhotoName || "Фото выбрано";
+      els.profileDetailSupportPhotoPreview.src = state.profile.supportPhotoDataUrl;
+      els.profileDetailSupportPhotoPreview.classList.remove("hidden");
+    } else {
+      els.profileDetailSupportPhotoMeta.textContent = "Фото не выбрано";
+      els.profileDetailSupportPhotoPreview.removeAttribute("src");
+      els.profileDetailSupportPhotoPreview.classList.add("hidden");
+    }
+  }
+
+  function clearSupportPhoto() {
+    state.profile.supportPhotoDataUrl = "";
+    state.profile.supportPhotoName = "";
+    state.profile.supportPhotoMime = "";
+    if (els.profileDetailSupportPhotoInput) {
+      els.profileDetailSupportPhotoInput.value = "";
+    }
+    renderSupportPhotoState();
+  }
+
   function renderProfileHeader() {
     const user = profileUserView();
     els.profileDisplayName.textContent = profileDisplayNameValue();
@@ -828,7 +893,7 @@
     out.display_name = String(out.display_name || "");
     out.phone = String(out.phone || "");
     out.email = String(out.email || "");
-    out.birth_date = String(out.birth_date || "");
+    out.birth_date = normalizeBirthDateForStorage(out.birth_date || "");
     out.member_name = String(out.member_name || "");
     if (out.latest_review && typeof out.latest_review === "object") {
       const rating = Number(out.latest_review.rating || 0);
@@ -866,7 +931,7 @@
 
     const latestReview = profileData.latest_review;
     if (latestReview && Number(latestReview.rating || 0) >= 1) {
-      els.profileRateBtn.querySelector(".profile-row-meta").textContent = `Последняя оценка: ${latestReview.rating}/5`;
+      els.profileRateBtn.querySelector(".profile-row-meta").textContent = `Текущая оценка: ${latestReview.rating}/5`;
     } else {
       els.profileRateBtn.querySelector(".profile-row-meta").textContent = "Оставить оценку и отзыв";
     }
@@ -919,6 +984,7 @@
     els.profileDetailSupportMessageInput.placeholder = isBug
       ? "Что произошло, как повторить, что ожидали увидеть"
       : "Напишите сообщение разработчику";
+    renderSupportPhotoState();
   }
 
   function setProfileReviewRating(value) {
@@ -950,7 +1016,7 @@
       els.profileDetailDisplayNameInput.value = String(profileData.display_name || "");
       els.profileDetailPhoneInput.value = String(profileData.phone || "");
       els.profileDetailEmailInput.value = String(profileData.email || "");
-      els.profileDetailBirthDateInput.value = String(profileData.birth_date || "");
+      els.profileDetailBirthDateInput.value = birthDateForInput(profileData.birth_date || "");
       return;
     }
 
@@ -963,6 +1029,7 @@
     if (page === "support") {
       setProfileSupportKind(state.profile.supportKind || "message");
       els.profileDetailSupportMessageInput.value = String(state.profile.supportMessage || "");
+      renderSupportPhotoState();
       return;
     }
 
@@ -974,9 +1041,24 @@
         state.profile.reviewRating = Number(latest && latest.rating ? latest.rating : 0);
         state.profile.reviewComment = String((latest && latest.comment) || "");
         state.profile.reviewLoadedFromServer = true;
+        state.profile.reviewEditMode = !Boolean(latest && Number(latest.rating || 0) >= 1);
+      }
+      const latest = profileData.latest_review && typeof profileData.latest_review === "object"
+        ? profileData.latest_review
+        : null;
+      const hasExisting = Boolean(latest && Number(latest.rating || 0) >= 1);
+      els.profileDetailExistingReviewCard.classList.toggle("hidden", !hasExisting);
+      if (hasExisting) {
+        els.profileDetailExistingReviewRating.textContent = `${Number(latest.rating || 0)}/5`;
+        els.profileDetailExistingReviewComment.textContent = String(latest.comment || "").trim() || "Без комментария";
       }
       els.profileDetailReviewCommentInput.value = String(state.profile.reviewComment || "");
       setProfileReviewRating(state.profile.reviewRating || 0);
+      els.profileDetailRatingStars.classList.toggle("hidden", hasExisting && !state.profile.reviewEditMode);
+      const reviewCommentField = els.profileDetailReviewCommentInput.closest(".field");
+      if (reviewCommentField) {
+        reviewCommentField.classList.toggle("hidden", hasExisting && !state.profile.reviewEditMode);
+      }
     }
   }
 
@@ -994,8 +1076,15 @@
 
     syncProfileDetailInputsFromState();
 
-    const isDisabled = state.profile.saving || (page === "review" && Number(state.profile.reviewRating || 0) <= 0);
+    const reviewNeedsRating =
+      page === "review" &&
+      (state.profile.reviewEditMode || !((state.profile.data || {}).latest_review)) &&
+      Number(state.profile.reviewRating || 0) <= 0;
+    const isDisabled = state.profile.saving || reviewNeedsRating;
     els.profileDetailSaveBtn.disabled = Boolean(isDisabled);
+    if (page === "review" && !state.profile.reviewEditMode && (state.profile.data || {}).latest_review) {
+      els.profileDetailSaveBtn.textContent = "Оценить заново";
+    }
 
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
@@ -1064,7 +1153,9 @@
       showToast(successText || "Сохранено");
     } catch (err) {
       console.error("profile save failed", err);
-      showToast("Не удалось сохранить. Попробуйте ещё раз.");
+      showToast(
+        String((err && err.message) || "").trim() || "Не удалось сохранить. Попробуйте ещё раз."
+      );
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1075,7 +1166,7 @@
     const displayName = String(els.profileDetailDisplayNameInput.value || "").trim();
     const phone = String(els.profileDetailPhoneInput.value || "").trim();
     const email = String(els.profileDetailEmailInput.value || "").trim();
-    const birthDate = String(els.profileDetailBirthDateInput.value || "").trim();
+    const birthDate = normalizeBirthDateForStorage(String(els.profileDetailBirthDateInput.value || "").trim());
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast("Проверьте email");
@@ -1106,7 +1197,8 @@
   async function sendProfileSupport() {
     const kind = state.profile.supportKind === "bug" ? "bug" : "message";
     const message = String(els.profileDetailSupportMessageInput.value || "").trim();
-    if (!message) {
+    const hasPhoto = kind === "bug" && Boolean(state.profile.supportPhotoDataUrl);
+    if (!message && !(kind === "bug" && hasPhoto)) {
       showToast(kind === "bug" ? "Опишите ошибку" : "Введите сообщение");
       return;
     }
@@ -1114,13 +1206,24 @@
     state.profile.saving = true;
     renderProfileDetailScreen();
     try {
-      await postJsonWithFallback("support", { kind, message });
+      await postJsonWithFallback("support", {
+        kind,
+        message: message || (kind === "bug" && hasPhoto ? "Фото без описания" : ""),
+        photo_base64: kind === "bug" ? state.profile.supportPhotoDataUrl || "" : "",
+        photo_name: kind === "bug" ? state.profile.supportPhotoName || "" : "",
+        photo_mime: kind === "bug" ? state.profile.supportPhotoMime || "" : "",
+      });
       state.profile.supportMessage = "";
       els.profileDetailSupportMessageInput.value = "";
+      if (kind === "bug") {
+        clearSupportPhoto();
+      }
       showToast(kind === "bug" ? "Ошибка отправлена разработчику" : "Сообщение отправлено");
     } catch (err) {
       console.error("support send failed", err);
-      showToast("Не удалось отправить сообщение");
+      showToast(
+        String((err && err.message) || "").trim() || "Не удалось отправить сообщение"
+      );
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1151,12 +1254,15 @@
       state.profile.data = next;
       state.profile.reviewComment = comment;
       state.profile.reviewLoadedFromServer = true;
+      state.profile.reviewEditMode = false;
       renderProfileScreen();
       renderProfileDetailScreen();
       showToast("Спасибо за оценку");
     } catch (err) {
       console.error("review submit failed", err);
-      showToast("Не удалось отправить оценку");
+      showToast(
+        String((err && err.message) || "").trim() || "Не удалось отправить оценку"
+      );
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1179,6 +1285,11 @@
       return;
     }
     if (page === "review") {
+      if (!state.profile.reviewEditMode && (state.profile.data || {}).latest_review) {
+        state.profile.reviewEditMode = true;
+        renderProfileDetailScreen();
+        return;
+      }
       state.profile.reviewComment = String(els.profileDetailReviewCommentInput.value || "");
       await submitProfileReview();
     }
@@ -1190,6 +1301,7 @@
     state.profile.detailPage = normalized;
     if (normalized === "review") {
       state.profile.reviewLoadedFromServer = false;
+      state.profile.reviewEditMode = false;
     }
     els.navAdd.classList.remove("hidden");
     showScreen("profile-detail");
@@ -2221,8 +2333,59 @@
       state.profile.supportMessage = String(els.profileDetailSupportMessageInput.value || "");
     });
 
+    els.profileDetailSupportAttachPhotoBtn.addEventListener("click", () => {
+      if (state.profile.supportKind !== "bug") return;
+      els.profileDetailSupportPhotoInput.click();
+    });
+
+    els.profileDetailSupportRemovePhotoBtn.addEventListener("click", () => {
+      clearSupportPhoto();
+    });
+
+    els.profileDetailSupportPhotoInput.addEventListener("change", () => {
+      const file = els.profileDetailSupportPhotoInput.files && els.profileDetailSupportPhotoInput.files[0];
+      if (!file) {
+        clearSupportPhoto();
+        return;
+      }
+      const mime = String(file.type || "").toLowerCase();
+      if (!mime.startsWith("image/")) {
+        showToast("Нужен файл изображения");
+        clearSupportPhoto();
+        return;
+      }
+      if (Number(file.size || 0) > 4 * 1024 * 1024) {
+        showToast("Фото слишком большое (до 4 МБ)");
+        clearSupportPhoto();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        if (!result.startsWith("data:")) {
+          showToast("Не удалось прочитать фото");
+          clearSupportPhoto();
+          return;
+        }
+        state.profile.supportPhotoDataUrl = result;
+        state.profile.supportPhotoName = String(file.name || "bug-report.jpg");
+        state.profile.supportPhotoMime = mime || "image/jpeg";
+        renderSupportPhotoState();
+      };
+      reader.onerror = () => {
+        showToast("Не удалось прочитать фото");
+        clearSupportPhoto();
+      };
+      reader.readAsDataURL(file);
+    });
+
     els.profileDetailReviewCommentInput.addEventListener("input", () => {
       state.profile.reviewComment = String(els.profileDetailReviewCommentInput.value || "");
+    });
+
+    els.profileDetailReviewAgainBtn.addEventListener("click", () => {
+      state.profile.reviewEditMode = true;
+      renderProfileDetailScreen();
     });
 
     Array.from(els.profileDetailRatingStars.querySelectorAll("[data-rating]")).forEach((btn) => {
