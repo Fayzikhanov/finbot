@@ -46,6 +46,17 @@
     screen: "home",
     isLoading: false,
     apiUnavailable: false,
+    profile: {
+      loaded: false,
+      loading: false,
+      saving: false,
+      data: null,
+      sections: {
+        info: false,
+        settings: false,
+        support: false,
+      },
+    },
   };
 
   const els = {
@@ -84,8 +95,33 @@
     homeScreen: document.getElementById("homeScreen"),
     transactionsScreen: document.getElementById("transactionsScreen"),
     addScreen: document.getElementById("addScreen"),
+    profileScreen: document.getElementById("profileScreen"),
     placeholderScreen: document.getElementById("placeholderScreen"),
     placeholderTitle: document.getElementById("placeholderTitle"),
+    profileAvatarImg: document.getElementById("profileAvatarImg"),
+    profileAvatarFallback: document.getElementById("profileAvatarFallback"),
+    profileDisplayName: document.getElementById("profileDisplayName"),
+    profileSubtitle: document.getElementById("profileSubtitle"),
+    profileInfoToggleBtn: document.getElementById("profileInfoToggleBtn"),
+    profileSettingsToggleBtn: document.getElementById("profileSettingsToggleBtn"),
+    profileSupportToggleBtn: document.getElementById("profileSupportToggleBtn"),
+    profileInfoPanel: document.getElementById("profileInfoPanel"),
+    profileSettingsPanel: document.getElementById("profileSettingsPanel"),
+    profileSupportPanel: document.getElementById("profileSupportPanel"),
+    profileInfoMeta: document.getElementById("profileInfoMeta"),
+    profileSettingsMeta: document.getElementById("profileSettingsMeta"),
+    profileSupportMeta: document.getElementById("profileSupportMeta"),
+    profileInfoName: document.getElementById("profileInfoName"),
+    profileInfoUsername: document.getElementById("profileInfoUsername"),
+    profileInfoTelegramId: document.getElementById("profileInfoTelegramId"),
+    profileInfoPhone: document.getElementById("profileInfoPhone"),
+    profileInfoEmail: document.getElementById("profileInfoEmail"),
+    profileInfoBirthDate: document.getElementById("profileInfoBirthDate"),
+    profileCurrencySelect: document.getElementById("profileCurrencySelect"),
+    profileLanguageSelect: document.getElementById("profileLanguageSelect"),
+    profileContactDeveloperBtn: document.getElementById("profileContactDeveloperBtn"),
+    profileReportBugBtn: document.getElementById("profileReportBugBtn"),
+    profileRateBtn: document.getElementById("profileRateBtn"),
     addModeTransactionBtn: document.getElementById("addModeTransactionBtn"),
     addModeTransferBtn: document.getElementById("addModeTransferBtn"),
     addKindRow: document.getElementById("addKindRow"),
@@ -183,6 +219,18 @@
     month: "Месяц",
     year: "Год",
     custom: "Период",
+  };
+  const profileLocalSettingsKey = "finbot-miniapp-profile-settings-v1";
+  const languageLabels = {
+    ru: "Русский",
+    uz: "O'zbekcha",
+    en: "English",
+  };
+  const currencyLabels = {
+    UZS: "UZS",
+    USD: "USD",
+    EUR: "EUR",
+    RUB: "RUB",
   };
 
   function formatDateLabel(value) {
@@ -640,23 +688,354 @@
     }, 2600);
   }
 
+  function safeTgUser() {
+    const user = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+    if (!user || typeof user !== "object") return null;
+    return user;
+  }
+
+  function safeTgReceiverUsername() {
+    const raw = tg && tg.initDataUnsafe ? tg.initDataUnsafe.receiver : null;
+    if (!raw || typeof raw !== "object") return "";
+    const username = String(raw.username || "").trim().replace(/^@+/, "");
+    return username;
+  }
+
+  function readLocalProfileSettings() {
+    try {
+      const raw = window.localStorage.getItem(profileLocalSettingsKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return {};
+      return parsed;
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function writeLocalProfileSettings(next) {
+    try {
+      window.localStorage.setItem(profileLocalSettingsKey, JSON.stringify(next || {}));
+    } catch (_err) {
+      // ignore storage failures in Mini App webview
+    }
+  }
+
+  function normalizeLanguageCode(value) {
+    const code = String(value || "").trim().toLowerCase();
+    if (code in languageLabels) return code;
+    return "ru";
+  }
+
+  function normalizeCurrencyCode(value) {
+    const code = String(value || "").trim().toUpperCase();
+    if (code in currencyLabels) return code;
+    return "UZS";
+  }
+
+  function profileUserView() {
+    const tgUser = safeTgUser();
+    const firstName = String((tgUser && tgUser.first_name) || "").trim();
+    const lastName = String((tgUser && tgUser.last_name) || "").trim();
+    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+    const username = String((tgUser && tgUser.username) || "").trim();
+    const telegramId = Number((tgUser && tgUser.id) || state.currentUserId || 0) || 0;
+    const photoUrl = String((tgUser && tgUser.photo_url) || "").trim();
+    return {
+      fullName,
+      firstName,
+      lastName,
+      username,
+      telegramId,
+      photoUrl,
+    };
+  }
+
+  function profileInitials() {
+    const user = profileUserView();
+    const source = user.fullName || user.username || "Пользователь";
+    const parts = source
+      .replace(/^@+/, "")
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length === 0) return "F";
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return `${parts[0].slice(0, 1)}${parts[1].slice(0, 1)}`.toUpperCase();
+  }
+
+  function profileDisplayNameValue() {
+    const profileData = state.profile.data || {};
+    const savedDisplayName = String(profileData.display_name || "").trim();
+    if (savedDisplayName) return savedDisplayName;
+    const memberName = String(profileData.member_name || "").trim();
+    if (memberName) return memberName;
+    const tgUser = profileUserView();
+    if (tgUser.fullName) return tgUser.fullName;
+    if (tgUser.username) return `@${tgUser.username}`;
+    return `Пользователь ${tgUser.telegramId || ""}`.trim();
+  }
+
+  function profileSubtitleValue() {
+    const tgUser = profileUserView();
+    const parts = [];
+    if (tgUser.username) parts.push(`@${tgUser.username}`);
+    if (tgUser.telegramId) parts.push(`ID ${tgUser.telegramId}`);
+    if (parts.length === 0) return "Данные Telegram";
+    return parts.join(" • ");
+  }
+
+  function profileFieldValue(value, fallback) {
+    const text = String(value || "").trim();
+    return text || (fallback || "Не указано");
+  }
+
+  function updateProfileSectionMeta() {
+    const profileData = state.profile.data || {};
+    const user = profileUserView();
+    const hasPhone = String(profileData.phone || "").trim();
+    const hasEmail = String(profileData.email || "").trim();
+    const contactsCount = [hasPhone, hasEmail].filter(Boolean).length;
+    els.profileInfoMeta.textContent = contactsCount
+      ? `Контактов заполнено: ${contactsCount}`
+      : "Имя, username и контакты";
+
+    const currency = normalizeCurrencyCode(profileData.currency || "UZS");
+    const language = normalizeLanguageCode(profileData.language || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+      ? tg.initDataUnsafe.user.language_code
+      : "ru"));
+    els.profileSettingsMeta.textContent = `${currencyLabels[currency]} • ${languageLabels[language]}`;
+
+    const hasBotUsername = Boolean(safeTgReceiverUsername());
+    els.profileSupportMeta.textContent = hasBotUsername
+      ? "Чат с ботом и отправка команды /support"
+      : "Подсказка по команде /support";
+
+    if (els.profileInfoName) {
+      const nameForInfo =
+        String(profileData.display_name || "").trim() ||
+        String(profileData.member_name || "").trim() ||
+        user.fullName ||
+        "Не указано";
+      els.profileInfoName.textContent = nameForInfo;
+    }
+    if (els.profileInfoUsername) {
+      els.profileInfoUsername.textContent = user.username ? `@${user.username}` : "Не указано";
+    }
+    if (els.profileInfoTelegramId) {
+      els.profileInfoTelegramId.textContent = user.telegramId ? String(user.telegramId) : "Не указано";
+    }
+    if (els.profileInfoPhone) {
+      els.profileInfoPhone.textContent = profileFieldValue(profileData.phone);
+    }
+    if (els.profileInfoEmail) {
+      els.profileInfoEmail.textContent = profileFieldValue(profileData.email);
+    }
+    if (els.profileInfoBirthDate) {
+      els.profileInfoBirthDate.textContent = profileFieldValue(profileData.birth_date);
+    }
+  }
+
+  function renderProfileHeader() {
+    const user = profileUserView();
+    els.profileDisplayName.textContent = profileDisplayNameValue();
+    els.profileSubtitle.textContent = profileSubtitleValue();
+    els.profileAvatarFallback.textContent = profileInitials();
+    if (user.photoUrl) {
+      els.profileAvatarImg.src = user.photoUrl;
+      els.profileAvatarImg.classList.remove("hidden");
+      els.profileAvatarFallback.classList.add("hidden");
+    } else {
+      els.profileAvatarImg.removeAttribute("src");
+      els.profileAvatarImg.classList.add("hidden");
+      els.profileAvatarFallback.classList.remove("hidden");
+    }
+  }
+
+  function setProfileSectionOpen(section, isOpen) {
+    const normalized =
+      section === "settings" || section === "support" || section === "info" ? section : "info";
+    state.profile.sections[normalized] = Boolean(isOpen);
+
+    const map = {
+      info: [els.profileInfoToggleBtn, els.profileInfoPanel],
+      settings: [els.profileSettingsToggleBtn, els.profileSettingsPanel],
+      support: [els.profileSupportToggleBtn, els.profileSupportPanel],
+    };
+    Object.keys(map).forEach((key) => {
+      const opened = key === normalized ? Boolean(isOpen) : Boolean(state.profile.sections[key]);
+      const [btn, panel] = map[key];
+      if (!btn || !panel) return;
+      btn.setAttribute("aria-expanded", opened ? "true" : "false");
+      panel.classList.toggle("hidden", !opened);
+    });
+  }
+
+  function toggleProfileSection(section) {
+    const key = section === "settings" || section === "support" ? section : "info";
+    const next = !state.profile.sections[key];
+    setProfileSectionOpen(key, next);
+  }
+
+  function syncProfileSelectControls() {
+    const profileData = state.profile.data || {};
+    const local = readLocalProfileSettings();
+    const tgLang = safeTgUser() && safeTgUser().language_code ? safeTgUser().language_code : "ru";
+    const currency = normalizeCurrencyCode(profileData.currency || local.currency || "UZS");
+    const language = normalizeLanguageCode(profileData.language || local.language || tgLang || "ru");
+    els.profileCurrencySelect.value = currency;
+    els.profileLanguageSelect.value = language;
+    profileData.currency = currency;
+    profileData.language = language;
+    state.profile.data = profileData;
+    updateProfileSectionMeta();
+  }
+
+  function renderProfileScreen() {
+    if (!els.profileScreen) return;
+    renderProfileHeader();
+    syncProfileSelectControls();
+    setProfileSectionOpen("info", Boolean(state.profile.sections.info));
+    setProfileSectionOpen("settings", Boolean(state.profile.sections.settings));
+    setProfileSectionOpen("support", Boolean(state.profile.sections.support));
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
+  async function loadProfile() {
+    if (state.profile.loading) return;
+    state.profile.loading = true;
+    try {
+      const payload = await fetchJsonWithFallback("profile", {
+        scope: "all",
+        period: "today",
+      });
+      const profileData = payload && payload.profile && typeof payload.profile === "object" ? payload.profile : {};
+      if (payload && typeof payload.member_name === "string") {
+        profileData.member_name = payload.member_name;
+      }
+      const local = readLocalProfileSettings();
+      state.profile.data = Object.assign({}, local, profileData);
+      state.profile.loaded = true;
+      renderProfileScreen();
+    } catch (_err) {
+      const local = readLocalProfileSettings();
+      state.profile.data = Object.assign({}, state.profile.data || {}, local);
+      state.profile.loaded = true;
+      renderProfileScreen();
+      showToast("Профиль загружен частично (без сервера)");
+    } finally {
+      state.profile.loading = false;
+    }
+  }
+
+  async function saveProfileSettings(changes) {
+    const next = Object.assign({}, state.profile.data || {}, changes || {});
+    next.language = normalizeLanguageCode(next.language || "ru");
+    next.currency = normalizeCurrencyCode(next.currency || "UZS");
+    state.profile.data = next;
+    writeLocalProfileSettings({
+      language: next.language,
+      currency: next.currency,
+    });
+    renderProfileScreen();
+
+    if (state.profile.saving) return;
+    state.profile.saving = true;
+    try {
+      const payload = await postJsonWithFallback("profile", {
+        language: next.language,
+        currency: next.currency,
+      });
+      const profileData = payload && payload.profile && typeof payload.profile === "object" ? payload.profile : {};
+      if (payload && typeof payload.member_name === "string") {
+        profileData.member_name = payload.member_name;
+      }
+      state.profile.data = Object.assign({}, state.profile.data || {}, profileData);
+      writeLocalProfileSettings({
+        language: normalizeLanguageCode(state.profile.data.language || "ru"),
+        currency: normalizeCurrencyCode(state.profile.data.currency || "UZS"),
+      });
+      renderProfileScreen();
+      showToast("Настройки профиля сохранены");
+    } catch (_err) {
+      showToast("Настройки сохранены локально");
+    } finally {
+      state.profile.saving = false;
+    }
+  }
+
+  function openTgBotChatWithSupportHint(mode) {
+    const action = mode === "bug" ? "bug" : "message";
+    const botUsername = safeTgReceiverUsername();
+    const command = "/support";
+    if (tg && typeof tg.HapticFeedback === "object" && tg.HapticFeedback && tg.HapticFeedback.impactOccurred) {
+      try {
+        tg.HapticFeedback.impactOccurred("light");
+      } catch (_err) {
+        // ignore haptic failures
+      }
+    }
+    if (botUsername) {
+      const url = `https://t.me/${botUsername}`;
+      if (tg && typeof tg.openTelegramLink === "function") {
+        tg.openTelegramLink(url);
+      } else {
+        window.open(url, "_blank", "noopener");
+      }
+      showToast(
+        action === "bug"
+          ? "Открыл чат с ботом. Отправьте /support и выберите «Сообщить об ошибке»"
+          : "Открыл чат с ботом. Отправьте /support и выберите «Написать разработчику»"
+      );
+      return;
+    }
+    showToast("Используйте команду /support в чате с ботом");
+  }
+
+  function openBotRatingHint() {
+    const botUsername = safeTgReceiverUsername();
+    if (botUsername) {
+      const url = `https://t.me/${botUsername}`;
+      if (tg && typeof tg.openTelegramLink === "function") {
+        tg.openTelegramLink(url);
+      } else {
+        window.open(url, "_blank", "noopener");
+      }
+      showToast("Открыл чат с ботом. Нажмите ⚙️ Настройки Ассистента → Оценить бота");
+      return;
+    }
+    showToast("Оценка доступна в чате с ботом: ⚙️ Настройки Ассистента → Оценить бота");
+  }
+
+  async function openProfileScreen() {
+    els.screenTitle.textContent = "Профиль";
+    els.navAdd.classList.remove("hidden");
+    showScreen("profile");
+    renderProfileScreen();
+    await loadProfile();
+  }
+
   function showScreen(name) {
     state.screen = name;
     const isAddScreen = name === "add";
+    const isProfileScreen = name === "profile";
     els.appRoot.classList.toggle("is-add-screen", isAddScreen);
+    els.appRoot.classList.toggle("is-profile-screen", isProfileScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
     els.transactionsScreen.classList.toggle("hidden", name !== "transactions");
     els.addScreen.classList.toggle("hidden", name !== "add");
+    els.profileScreen.classList.toggle("hidden", name !== "profile");
     els.placeholderScreen.classList.toggle("hidden", name !== "placeholder");
 
     els.navHome.classList.toggle("active", name === "home");
     els.navTransactions.classList.toggle("active", name === "transactions");
     els.navAdd.classList.toggle("active", name === "add");
     els.navConverter.classList.toggle("active", false);
-    els.navProfile.classList.toggle("active", false);
+    els.navProfile.classList.toggle("active", name === "profile");
     els.navAdd.classList.toggle("hidden", name === "add");
 
-    if (isAddScreen) {
+    if (isAddScreen || isProfileScreen) {
       closeScopeMenu();
       closeDateSheet();
       setStatusBanner("", "info");
@@ -666,8 +1045,11 @@
   function showPlaceholder(title) {
     els.placeholderTitle.textContent = title;
     state.screen = "placeholder";
+    els.appRoot.classList.remove("is-add-screen", "is-profile-screen");
     els.homeScreen.classList.add("hidden");
     els.transactionsScreen.classList.add("hidden");
+    els.addScreen.classList.add("hidden");
+    els.profileScreen.classList.add("hidden");
     els.placeholderScreen.classList.remove("hidden");
 
     els.navHome.classList.remove("active");
@@ -1604,10 +1986,32 @@
       showPlaceholder("Конвертер");
     });
 
-    els.navProfile.addEventListener("click", () => {
-      els.screenTitle.textContent = "Раздел";
-      els.navAdd.classList.remove("hidden");
-      showPlaceholder("Профиль");
+    els.navProfile.addEventListener("click", async () => {
+      await openProfileScreen();
+    });
+
+    els.profileInfoToggleBtn.addEventListener("click", () => toggleProfileSection("info"));
+    els.profileSettingsToggleBtn.addEventListener("click", () => toggleProfileSection("settings"));
+    els.profileSupportToggleBtn.addEventListener("click", () => toggleProfileSection("support"));
+
+    els.profileCurrencySelect.addEventListener("change", async () => {
+      await saveProfileSettings({ currency: els.profileCurrencySelect.value });
+    });
+
+    els.profileLanguageSelect.addEventListener("change", async () => {
+      await saveProfileSettings({ language: els.profileLanguageSelect.value });
+    });
+
+    els.profileContactDeveloperBtn.addEventListener("click", () => {
+      openTgBotChatWithSupportHint("message");
+    });
+
+    els.profileReportBugBtn.addEventListener("click", () => {
+      openTgBotChatWithSupportHint("bug");
+    });
+
+    els.profileRateBtn.addEventListener("click", () => {
+      openBotRatingHint();
     });
   }
 
@@ -1622,6 +2026,7 @@
     renderTransferRecipients();
     setDefaultAddDateTime();
     renderAddCategoryValue();
+    renderProfileScreen();
     await loadCategoriesForAdd();
     updatePeriodLabel();
     els.scopeLabel.textContent = "Общие расходы";
@@ -1632,7 +2037,7 @@
       if (document.hidden) return;
       if (state.screen === "transactions") {
         await loadTransactions();
-      } else {
+      } else if (state.screen === "home") {
         await loadOverview();
       }
     });
@@ -1641,7 +2046,7 @@
       if (document.hidden || state.isLoading) return;
       if (state.screen === "transactions") {
         await loadTransactions();
-      } else {
+      } else if (state.screen === "home") {
         await loadOverview();
       }
     }, 15000);
