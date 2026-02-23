@@ -80,6 +80,14 @@ body {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
+.app,
+button,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
 .app.is-profile-detail-screen .topbar,
 .app.is-profile-detail-screen .period-badge,
 .app.is-profile-detail-screen .status-banner,
@@ -1947,5 +1955,12 @@ body {
   .profile-star-btn {
     width: 40px;
     height: 40px;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  .app.is-profile-detail-screen .field-input,
+  .app.is-profile-detail-screen .field-select {
+    font-size: 16px;
   }
 }
