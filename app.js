@@ -278,17 +278,10 @@
   }
 
   const apiCandidates = buildApiCandidates();
-  const periodLabels = {
-    today: "Сегодня",
-    week: "Неделя",
-    month: "Месяц",
-    year: "Год",
-    custom: "Период",
-  };
   const profileLocalSettingsKey = "finbot-miniapp-profile-settings-v1";
   const languageLabels = {
     ru: "Русский",
-    uz: "O'zbekcha",
+    uz: "O'zbek tili",
     en: "English",
   };
   const currencyLabels = {
@@ -300,11 +293,287 @@
   const supportBugPhotoLimit = 3;
   const supportBugPhotoMaxBytes = 4 * 1024 * 1024;
 
+  const i18n = {
+    ru: {
+      app_title: "Семейные финансы",
+      today: "Сегодня",
+      week: "Неделя",
+      month: "Месяц",
+      year: "Год",
+      custom: "Период",
+      home: "Главная",
+      transactions: "Транзакции",
+      analytics: "Аналитика",
+      profile: "Профиль",
+      add_transaction_title: "Добавить транзакцию",
+      scope_all: "Общие расходы",
+      scope_family: "Семейные расходы",
+      status_need_chat: "Не передан chat_id. Откройте приложение из группы через кнопку бота.",
+      status_api_overview_error: "Не удалось загрузить данные. Проверьте API mini-app (домен /api).",
+      status_api_transactions_error: "Не удалось загрузить транзакции. Проверьте API mini-app (домен /api).",
+      status_api_analytics_error: "Не удалось загрузить аналитику. Проверьте API mini-app (домен /api).",
+      empty_no_chat: "Нет данных по текущему чату.",
+      empty_overview_error: "Ошибка загрузки отчёта.",
+      empty_transactions_error: "Ошибка загрузки транзакций.",
+      empty_analytics_error: "Ошибка загрузки аналитики.",
+      empty_analytics_no_data: "Нет данных за выбранный период.",
+      home_income: "Доходы",
+      home_expense: "Расходы",
+      home_transfers: "Семейные переводы",
+      home_breakdown_expense: "Разбивка расходов",
+      home_breakdown_income: "Разбивка доходов",
+      donut_total_period: "Всего за период",
+      home_recent_expenses: "Последние расходы",
+      home_recent_income: "Последние доходы",
+      view_all: "Посмотреть все",
+      add_mode_transaction: "Транзакция",
+      add_mode_transfer: "Перевод средств внутри семьи",
+      add_kind_expense: "Расход",
+      add_kind_income: "Доход",
+      add_recipient: "Кому перевести",
+      select_member: "Выберите участника",
+      no_second_member: "Нет второго участника",
+      add_amount: "Сумма",
+      add_description_tx: "Название транзакции",
+      add_description_transfer: "Комментарий (необязательно)",
+      add_description_placeholder_tx: "Например: коммуналка",
+      add_description_placeholder_transfer: "Например: перевод за продукты",
+      add_category: "Категория",
+      add_change_category: "Изменить категорию",
+      add_category_auto: "Определяю автоматически…",
+      add_date: "Дата",
+      add_time: "Время",
+      save: "Сохранить",
+      save_transfer: "Сохранить перевод",
+      profile_info_title: "Личная информация",
+      profile_info_meta_default: "Имя, username и контакты",
+      profile_settings_title_row: "Настройки",
+      profile_settings_meta_default: "Язык и валюта",
+      profile_support_title_row: "Поддержка",
+      profile_support_meta_default: "Связь с разработчиком и баг-репорт",
+      profile_rate_title: "Оценить бота",
+      profile_rate_meta_default: "Оставить оценку и отзыв",
+      profile_subtitle_fallback: "Данные Telegram",
+      profile_user_fallback: "Пользователь",
+      profile_user_number: "Пользователь {id}",
+      not_specified: "Не указано",
+      settings_currency_label: "Выбор валюты",
+      settings_language_label: "Выбор языка",
+      settings_hint: "Настройки применяются к вашему профилю в боте и miniapp.",
+      support_dev_title: "Связь с разработчиком",
+      support_dev_meta: "Написать сообщение разработчику",
+      support_bug_title: "Сообщить об ошибке",
+      support_bug_meta: "Текст и фото (опционально)",
+      support_message_label: "Сообщение",
+      support_message_placeholder: "Опишите вопрос или проблему",
+      support_attach_photo: "Прикрепить фото",
+      support_clear_photo: "Очистить фото",
+      support_photo_limit: "Можно добавить до 3 фото (до 4 МБ каждое)",
+      support_compose_hint: "Сообщение будет отправлено разработчику прямо из miniapp от имени вашего профиля.",
+      review_current_title: "Текущая оценка",
+      review_again: "Оценить заново",
+      review_rate_prompt: "Поставьте оценку",
+      review_meta_default: "Можно оставить комментарий (необязательно).",
+      review_comment_label: "Комментарий",
+      review_comment_placeholder: "Что понравилось или что улучшить",
+      placeholder_soon: "Скоро",
+      placeholder_text: "Этот раздел пока пустой. Добавим следующим шагом.",
+      fab_add_aria: "Добавить",
+      date_range_title: "Диапазон дат",
+      date_range_start: "Начало",
+      date_range_end: "Конец",
+      apply: "Применить",
+      close: "Закрыть",
+      category_picker_title: "Выберите категорию",
+      support_message_to_dev: "Сообщение разработчику",
+      support_bug_description: "Описание ошибки",
+      support_bug_placeholder: "Что произошло, как повторить, что ожидали увидеть",
+      support_message_placeholder_compose: "Напишите сообщение разработчику",
+      support_photos_none: "Фото не выбраны",
+      support_photos_count: "Добавлено фото: {count}/{limit}",
+      photo_alt: "Фото {index}",
+      photo_remove_aria: "Удалить фото {index}",
+      photo_read_error: "Не удалось прочитать фото",
+      contacts_filled: "Контактов заполнено: {count}",
+      profile_settings_meta: "{currency} • {language}",
+      profile_rate_current: "Текущая оценка: {rating}/5",
+      profile_detail_info_title: "Личная информация",
+      profile_detail_info_subtitle: "Ваши данные профиля",
+      profile_detail_settings_title: "Настройки",
+      profile_detail_settings_subtitle: "Язык и валюта",
+      profile_detail_support_title: "Поддержка",
+      profile_detail_support_subtitle: "Связь с разработчиком и ошибки",
+      profile_detail_support_message_title: "Связь с разработчиком",
+      profile_detail_support_message_subtitle: "Напишите сообщение",
+      profile_detail_support_bug_title: "Сообщить об ошибке",
+      profile_detail_support_bug_subtitle: "Описание и фото (опционально)",
+      profile_detail_review_title: "Оценить бота",
+      profile_detail_review_subtitle: "Оценка и комментарий",
+      send: "Отправить",
+      send_rating: "Отправить оценку",
+      selected_rating: "Выбрано: {rating}/5",
+      no_comment: "Без комментария",
+      profile_partial_loaded: "Профиль загружен частично (без сервера)",
+      saved: "Сохранено",
+      save_failed: "Не удалось сохранить. Попробуйте ещё раз.",
+      email_check: "Проверьте email",
+      birth_date_invalid: "Некорректная дата рождения",
+      personal_saved: "Личные данные сохранены",
+      settings_saved: "Настройки сохранены",
+      support_describe_bug: "Опишите ошибку",
+      support_enter_message: "Введите сообщение",
+      support_sent_bug: "Ошибка отправлена разработчику",
+      support_sent_message: "Сообщение отправлено",
+      support_send_failed: "Не удалось отправить сообщение",
+      review_choose_rating: "Выберите оценку",
+      review_thanks: "Спасибо за оценку",
+      review_send_failed: "Не удалось отправить оценку",
+      amount_gt_zero: "Введите сумму больше 0",
+      pick_date_time: "Укажите дату и время",
+      pick_transfer_recipient: "Выберите получателя перевода",
+      no_self_transfer: "Нельзя переводить самому себе",
+      enter_tx_name: "Введите название транзакции",
+      pick_tx_type: "Выберите тип транзакции",
+      invalid_datetime: "Некорректная дата или время",
+      future_datetime_forbidden: "Нельзя выбрать дату/время в будущем",
+      transfer_saved: "Перевод сохранён",
+      create_saved: "Сохранено",
+      create_error_prefix: "Ошибка: ",
+      create_error_fallback: "не удалось сохранить",
+      recent_empty_income: "Пока нет доходов за этот период",
+      recent_empty_expense: "Пока нет расходов за этот период",
+      recent_empty_all: "Пока нет транзакций за этот период",
+      add_income: "Добавить доход",
+      add_expense: "Добавить расход",
+      scope_no_options: "Нет вариантов",
+      other: "Прочее",
+      api_404: "MiniApp API не обновлён (404). Перезапустите бот и miniapp server.",
+      api_support_not_configured: "Поддержка не настроена: проверьте ADMIN_CHAT_ID",
+      api_no_connection: "Нет связи с miniapp server",
+      api_module_missing: "Модуль аналитики не загружен.",
+      api_module_unavailable: "Модуль аналитики недоступен.",
+      error: "Ошибка",
+      only_images: "Нужны только файлы изображений",
+      photo_size_limit: "Каждое фото должно быть до 4 МБ",
+      photos_limit_max: "Можно добавить до {limit} фото",
+      photos_added_partial: "Добавлено только {count} фото (лимит {limit})",
+    },
+  };
+
+  i18n.uz = Object.assign({}, i18n.ru, {
+    app_title: "Oilaviy moliya",
+    today: "Bugun",
+    week: "Hafta",
+    month: "Oy",
+    year: "Yil",
+    custom: "Davr",
+    home: "Bosh sahifa",
+    transactions: "Tranzaksiyalar",
+    analytics: "Analitika",
+    profile: "Profil",
+    add_transaction_title: "Tranzaksiya qo'shish",
+    scope_all: "Umumiy xarajatlar",
+    scope_family: "Oilaviy xarajatlar",
+    home_income: "Daromadlar",
+    home_expense: "Xarajatlar",
+    home_transfers: "Oilaviy o'tkazmalar",
+    view_all: "Barchasini ko'rish",
+    save: "Saqlash",
+    send: "Yuborish",
+    close: "Yopish",
+    apply: "Qo'llash",
+    profile_settings_title_row: "Sozlamalar",
+    profile_support_title_row: "Yordam",
+    profile_rate_title: "Botni baholash",
+    settings_currency_label: "Valyutani tanlash",
+    settings_language_label: "Tilni tanlash",
+    settings_hint: "Sozlamalar bot va miniapp profilingizga qo'llanadi.",
+    settings_saved: "Sozlamalar saqlandi",
+    profile_detail_settings_title: "Sozlamalar",
+    profile_detail_settings_subtitle: "Til va valyuta",
+    other: "Boshqa",
+    language: "Til",
+    status_need_chat: "chat_id uzatilmadi. Ilovani guruhdagi bot tugmasi orqali oching.",
+    api_no_connection: "miniapp server bilan aloqa yo'q",
+  });
+
+  i18n.en = Object.assign({}, i18n.ru, {
+    app_title: "Family Finance",
+    today: "Today",
+    week: "Week",
+    month: "Month",
+    year: "Year",
+    custom: "Period",
+    home: "Home",
+    transactions: "Transactions",
+    analytics: "Analytics",
+    profile: "Profile",
+    add_transaction_title: "Add transaction",
+    scope_all: "All expenses",
+    scope_family: "Family expenses",
+    home_income: "Income",
+    home_expense: "Expenses",
+    home_transfers: "Family transfers",
+    view_all: "View all",
+    save: "Save",
+    send: "Send",
+    close: "Close",
+    apply: "Apply",
+    profile_settings_title_row: "Settings",
+    profile_support_title_row: "Support",
+    profile_rate_title: "Rate the bot",
+    settings_currency_label: "Select currency",
+    settings_language_label: "Select language",
+    settings_hint: "Settings are applied to your profile in the bot and miniapp.",
+    settings_saved: "Settings saved",
+    profile_detail_settings_title: "Settings",
+    profile_detail_settings_subtitle: "Language and currency",
+    other: "Other",
+    status_need_chat: "chat_id is missing. Open the app from the group using the bot button.",
+    api_no_connection: "No connection to miniapp server",
+    api_support_not_configured: "Support is not configured: check ADMIN_CHAT_ID",
+  });
+
+  function currentLanguageCode() {
+    const profileData = state && state.profile && state.profile.data ? state.profile.data : null;
+    if (profileData && profileData.language && languageLabels[profileData.language]) {
+      return String(profileData.language);
+    }
+    const local = readLocalProfileSettings();
+    if (local && local.language && languageLabels[local.language]) {
+      return String(local.language);
+    }
+    const tgUser = safeTgUser();
+    const tgLangRaw = String((tgUser && tgUser.language_code) || "").toLowerCase();
+    if (tgLangRaw.startsWith("uz")) return "uz";
+    if (tgLangRaw.startsWith("en")) return "en";
+    return "ru";
+  }
+
+  function uiLocale() {
+    const lang = currentLanguageCode();
+    if (lang === "uz") return "uz-UZ";
+    if (lang === "en") return "en-US";
+    return "ru-RU";
+  }
+
+  function tr(key, vars) {
+    const lang = currentLanguageCode();
+    const dict = i18n[lang] || i18n.ru;
+    let text = Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : (i18n.ru[key] || key);
+    if (vars && text && typeof text === "string") {
+      Object.keys(vars).forEach((k) => {
+        text = text.replaceAll(`{${k}}`, String(vars[k]));
+      });
+    }
+    return String(text || key);
+  }
+
   function formatDateLabel(value) {
     if (!value) return "";
     const dt = new Date(`${value}T00:00:00`);
     if (Number.isNaN(dt.getTime())) return value;
-    return dt.toLocaleDateString("ru-RU");
+    return dt.toLocaleDateString(uiLocale());
   }
 
   function effectiveCurrentUserId() {
@@ -335,7 +604,7 @@
       els.periodLabel.textContent = `${formatDateLabel(state.start)} - ${formatDateLabel(state.end)}`;
       return;
     }
-    els.periodLabel.textContent = periodLabels[state.period] || "Сегодня";
+    els.periodLabel.textContent = tr(state.period) || tr("today");
   }
 
   function setStatusBanner(text, kind) {
@@ -388,7 +657,9 @@
   function fmtMoney(amount, signed) {
     const absVal = Math.abs(Number(amount || 0));
     const sign = signed ? (amount > 0 ? "+" : amount < 0 ? "-" : "") : "";
-    return `${sign}${new Intl.NumberFormat("ru-RU").format(absVal)} сум`;
+    const lang = currentLanguageCode();
+    const currencySuffix = lang === "ru" ? "сум" : "so'm";
+    return `${sign}${new Intl.NumberFormat(uiLocale()).format(absVal)} ${currencySuffix}`;
   }
 
   function fmtPercent(value) {
@@ -456,6 +727,21 @@
   }
 
   function periodComparisonLabel(mode) {
+    const lang = currentLanguageCode();
+    if (lang === "uz") {
+      if (mode === "week") return "o'tgan haftaga nisbatan";
+      if (mode === "month") return "o'tgan oyga nisbatan";
+      if (mode === "year") return "o'tgan yilga nisbatan";
+      if (mode === "today") return "kechagi kunga nisbatan";
+      return "oldingi davrga nisbatan";
+    }
+    if (lang === "en") {
+      if (mode === "week") return "vs last week";
+      if (mode === "month") return "vs last month";
+      if (mode === "year") return "vs last year";
+      if (mode === "today") return "vs yesterday";
+      return "vs previous period";
+    }
     if (mode === "week") return "к прошлой неделе";
     if (mode === "month") return "к прошлому месяцу";
     if (mode === "year") return "к прошлому году";
@@ -479,7 +765,7 @@
   }
 
   function normalizeCategoryKey(label) {
-    return String(label || "Прочее")
+    return String(label || tr("other"))
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ");
@@ -520,7 +806,8 @@
   function updateDonutCenter(activeItem) {
     const setMoneyCenter = (amountValue) => {
       const amount = Math.abs(Number(amountValue || 0));
-      const amountStr = new Intl.NumberFormat("ru-RU").format(amount);
+      const amountStr = new Intl.NumberFormat(uiLocale()).format(amount);
+      const currencySuffix = currentLanguageCode() === "ru" ? "сум" : "so'm";
       const len = amountStr.length;
       els.donutTotal.classList.remove("small", "xsmall");
       if (len >= 11) {
@@ -530,7 +817,7 @@
       }
       els.donutTotal.innerHTML = `
         <span class="money-amount">${amountStr}</span>
-        <span class="money-currency">сум</span>
+        <span class="money-currency">${escapeHtml(currencySuffix)}</span>
       `;
     };
 
@@ -543,7 +830,7 @@
       return;
     }
     setMoneyCenter(total);
-    els.donutSub.textContent = "Всего за период";
+    els.donutSub.textContent = tr("donut_total_period");
     els.donutMeta.textContent = "";
     els.donutMeta.classList.add("hidden");
   }
@@ -667,9 +954,12 @@
     const isYesterday = dt.toDateString() === y.toDateString();
     const hh = String(dt.getHours()).padStart(2, "0");
     const mm = String(dt.getMinutes()).padStart(2, "0");
-    if (sameDay) return `Сегодня, ${hh}:${mm}`;
-    if (isYesterday) return `Вчера, ${hh}:${mm}`;
-    return `${dt.toLocaleDateString("ru-RU")} ${hh}:${mm}`;
+    if (sameDay) return `${tr("today")}, ${hh}:${mm}`;
+    if (isYesterday) {
+      const yesterdayLabel = currentLanguageCode() === "ru" ? "Вчера" : (currentLanguageCode() === "uz" ? "Kecha" : "Yesterday");
+      return `${yesterdayLabel}, ${hh}:${mm}`;
+    }
+    return `${dt.toLocaleDateString(uiLocale())} ${hh}:${mm}`;
   }
 
   function buildApiParams(overrides) {
@@ -761,7 +1051,7 @@
   function formatAmountInput(value) {
     const digits = String(value || "").replace(/[^\d]/g, "");
     if (!digits) return "";
-    return new Intl.NumberFormat("ru-RU").format(Number(digits));
+    return new Intl.NumberFormat(uiLocale()).format(Number(digits));
   }
 
   function nowLocalDateTimeParts() {
@@ -802,15 +1092,15 @@
 
   function userFacingApiError(err, fallbackText) {
     const raw = String((err && err.message) || "").trim();
-    if (!raw) return String(fallbackText || "Ошибка");
+    if (!raw) return String(fallbackText || tr("error"));
     if (/HTTP 404\b/i.test(raw)) {
-      return "MiniApp API не обновлён (404). Перезапустите бот и miniapp server.";
+      return tr("api_404");
     }
     if (/support chat is not configured/i.test(raw)) {
-      return "Поддержка не настроена: проверьте ADMIN_CHAT_ID";
+      return tr("api_support_not_configured");
     }
     if (/Failed to fetch|NetworkError|api unavailable/i.test(raw)) {
-      return "Нет связи с miniapp server";
+      return tr("api_no_connection");
     }
     return raw;
   }
@@ -880,7 +1170,7 @@
 
   function profileInitials() {
     const user = profileUserView();
-    const source = user.fullName || user.username || "Пользователь";
+    const source = user.fullName || user.username || tr("profile_user_fallback");
     const parts = source
       .replace(/^@+/, "")
       .split(/\s+/)
@@ -899,7 +1189,7 @@
     const tgUser = profileUserView();
     if (tgUser.fullName) return tgUser.fullName;
     if (tgUser.username) return `@${tgUser.username}`;
-    return `Пользователь ${tgUser.telegramId || ""}`.trim();
+    return tr("profile_user_number", { id: tgUser.telegramId || "" }).trim();
   }
 
   function profileSubtitleValue() {
@@ -907,13 +1197,13 @@
     const parts = [];
     if (tgUser.username) parts.push(`@${tgUser.username}`);
     if (tgUser.telegramId) parts.push(`ID ${tgUser.telegramId}`);
-    if (parts.length === 0) return "Данные Telegram";
+    if (parts.length === 0) return tr("profile_subtitle_fallback");
     return parts.join(" • ");
   }
 
   function profileFieldValue(value, fallback) {
     const text = String(value || "").trim();
-    return text || (fallback || "Не указано");
+    return text || (fallback || tr("not_specified"));
   }
 
   function normalizeBirthDateForStorage(value) {
@@ -960,9 +1250,12 @@
     }
 
     if (hasPhoto) {
-      els.profileDetailSupportPhotoMeta.textContent = `Добавлено фото: ${photoCount}/${supportBugPhotoLimit}`;
+      els.profileDetailSupportPhotoMeta.textContent = tr("support_photos_count", {
+        count: photoCount,
+        limit: supportBugPhotoLimit,
+      });
     } else {
-      els.profileDetailSupportPhotoMeta.textContent = "Фото не выбраны";
+      els.profileDetailSupportPhotoMeta.textContent = tr("support_photos_none");
     }
 
     if (!els.profileDetailSupportPhotoGrid) return;
@@ -974,13 +1267,13 @@
 
       const thumb = document.createElement("img");
       thumb.className = "profile-photo-thumb";
-      thumb.alt = `Фото ${index + 1}`;
+      thumb.alt = tr("photo_alt", { index: index + 1 });
       thumb.src = String((photo && photo.dataUrl) || "");
 
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "profile-photo-remove-btn";
-      removeBtn.setAttribute("aria-label", `Удалить фото ${index + 1}`);
+      removeBtn.setAttribute("aria-label", tr("photo_remove_aria", { index: index + 1 }));
       removeBtn.textContent = "×";
       removeBtn.addEventListener("click", () => {
         removeSupportPhotoAt(index);
@@ -988,7 +1281,7 @@
 
       const name = document.createElement("div");
       name.className = "profile-photo-item-name";
-      name.textContent = String((photo && photo.name) || `Фото ${index + 1}`);
+      name.textContent = String((photo && photo.name) || tr("photo_alt", { index: index + 1 }));
 
       item.appendChild(thumb);
       item.appendChild(removeBtn);
@@ -1021,13 +1314,13 @@
       reader.onload = () => {
         const result = typeof reader.result === "string" ? reader.result : "";
         if (!result.startsWith("data:")) {
-          reject(new Error("Не удалось прочитать фото"));
+          reject(new Error(tr("photo_read_error")));
           return;
         }
         resolve(result);
       };
       reader.onerror = () => {
-        reject(new Error("Не удалось прочитать фото"));
+        reject(new Error(tr("photo_read_error")));
       };
       reader.readAsDataURL(file);
     });
@@ -1083,6 +1376,141 @@
     });
   }
 
+  function setNodeText(node, value) {
+    if (!node) return;
+    node.textContent = String(value || "");
+  }
+
+  function setNodePlaceholder(node, value) {
+    if (!node) return;
+    node.placeholder = String(value || "");
+  }
+
+  function applyUiLanguage() {
+    const lang = currentLanguageCode();
+    document.documentElement.lang = lang;
+    document.title = tr("app_title");
+
+    if (Array.isArray(state.scopeOptions)) {
+      state.scopeOptions = state.scopeOptions.map((item) => {
+        const key = String((item && item.key) || "");
+        if (key === "all") return Object.assign({}, item, { label: tr("scope_all") });
+        if (key === "family") return Object.assign({}, item, { label: tr("scope_family") });
+        return item;
+      });
+    }
+    const currentScopeOption = (state.scopeOptions || []).find((item) => String(item.key || "") === String(state.scope || ""));
+    if (currentScopeOption && els.scopeLabel) {
+      els.scopeLabel.textContent = String(currentScopeOption.label || tr("scope_all"));
+    } else if (els.scopeLabel) {
+      els.scopeLabel.textContent = tr("scope_all");
+    }
+
+    if (els.screenTitle) {
+      if (state.screen === "transactions") els.screenTitle.textContent = tr("transactions");
+      else if (state.screen === "analytics") els.screenTitle.textContent = tr("analytics");
+      else if (state.screen === "profile" || state.screen === "profile-detail") els.screenTitle.textContent = tr("profile");
+      else if (state.screen === "add") els.screenTitle.textContent = tr("add_transaction_title");
+      else els.screenTitle.textContent = tr("home");
+    }
+
+    setNodeText(els.tabIncome && els.tabIncome.querySelector(".card-title"), tr("home_income"));
+    setNodeText(els.tabExpense && els.tabExpense.querySelector(".card-title"), tr("home_expense"));
+    setNodeText(
+      els.familyTransfersValue && els.familyTransfersValue.closest(".card") && els.familyTransfersValue.closest(".card").querySelector(".card-title"),
+      tr("home_transfers")
+    );
+    setNodeText(els.viewAllBtn, tr("view_all"));
+    setNodeText(els.addModeTransactionBtn, tr("add_mode_transaction"));
+    setNodeText(els.addModeTransferBtn, tr("add_mode_transfer"));
+    setNodeText(els.addKindExpenseBtn, tr("add_kind_expense"));
+    setNodeText(els.addKindIncomeBtn, tr("add_kind_income"));
+    setNodeText(els.addDescriptionLabel, state.addForm.mode === "transfer" ? tr("add_description_transfer") : tr("add_description_tx"));
+    setNodePlaceholder(
+      els.addDescriptionInput,
+      state.addForm.mode === "transfer" ? tr("add_description_placeholder_transfer") : tr("add_description_placeholder_tx")
+    );
+    setNodeText(els.addChangeCategoryBtn, tr("add_change_category"));
+    setNodeText(document.querySelector("#addTransferRecipientField .field-label"), tr("add_recipient"));
+    setNodeText(els.addAmountInput && els.addAmountInput.closest(".field") && els.addAmountInput.closest(".field").querySelector(".field-label"), tr("add_amount"));
+    setNodeText(document.querySelector("#addCategoryField .field-label"), tr("add_category"));
+    setNodeText(els.addDateInput && els.addDateInput.closest(".field") && els.addDateInput.closest(".field").querySelector(".field-label"), tr("add_date"));
+    setNodeText(els.addTimeInput && els.addTimeInput.closest(".field") && els.addTimeInput.closest(".field").querySelector(".field-label"), tr("add_time"));
+    setNodeText(document.querySelector("#homeScreen .panel-head #chartSectionTitle"), tr(state.selectedAnalytics === "income" ? "home_breakdown_income" : "home_breakdown_expense"));
+    setNodeText(document.querySelector("#homeScreen .panel-head #recentSectionTitle"), tr(state.selectedAnalytics === "income" ? "home_recent_income" : "home_recent_expenses"));
+    setNodeText(els.donutSub, tr("donut_total_period"));
+
+    setNodeText(els.profileInfoBtn && els.profileInfoBtn.querySelector(".profile-row-title"), tr("profile_info_title"));
+    setNodeText(els.profileSettingsBtn && els.profileSettingsBtn.querySelector(".profile-row-title"), tr("profile_settings_title_row"));
+    setNodeText(els.profileSupportBtn && els.profileSupportBtn.querySelector(".profile-row-title"), tr("profile_support_title_row"));
+    setNodeText(els.profileRateBtn && els.profileRateBtn.querySelector(".profile-row-title"), tr("profile_rate_title"));
+    setNodeText(els.profileDetailOpenDevSupportBtn && els.profileDetailOpenDevSupportBtn.querySelector(".profile-row-title"), tr("support_dev_title"));
+    setNodeText(els.profileDetailOpenDevSupportBtn && els.profileDetailOpenDevSupportBtn.querySelector(".profile-row-meta"), tr("support_dev_meta"));
+    setNodeText(els.profileDetailOpenBugSupportBtn && els.profileDetailOpenBugSupportBtn.querySelector(".profile-row-title"), tr("support_bug_title"));
+    setNodeText(els.profileDetailOpenBugSupportBtn && els.profileDetailOpenBugSupportBtn.querySelector(".profile-row-meta"), tr("support_bug_meta"));
+    setNodePlaceholder(els.profileDetailSupportMessageInput, tr("support_message_placeholder"));
+    setNodeText(els.profileDetailSupportAttachPhotoBtn, tr("support_attach_photo"));
+    setNodeText(els.profileDetailSupportRemovePhotoBtn, tr("support_clear_photo"));
+    setNodeText(document.querySelector(".profile-photo-limit-note"), tr("support_photo_limit"));
+    setNodeText(document.querySelector("#profileDetailSupportComposePage .profile-hint"), tr("support_compose_hint"));
+    setNodeText(document.querySelector("#profileDetailReviewPage .profile-existing-review-title"), tr("review_current_title"));
+    setNodeText(els.profileDetailReviewAgainBtn, tr("review_again"));
+    setNodeText(document.querySelector("#profileDetailReviewPage .profile-rating-label"), tr("review_rate_prompt"));
+    setNodeText(els.profileDetailRatingMeta, state.profile.reviewRating > 0 ? tr("selected_rating", { rating: state.profile.reviewRating }) : tr("review_meta_default"));
+    setNodeText(els.profileDetailReviewCommentInput && els.profileDetailReviewCommentInput.closest(".field") && els.profileDetailReviewCommentInput.closest(".field").querySelector(".field-label"), tr("review_comment_label"));
+    setNodePlaceholder(els.profileDetailReviewCommentInput, tr("review_comment_placeholder"));
+
+    const settingsLabels = document.querySelectorAll("#profileDetailSettingsPage .field-label");
+    if (settingsLabels[0]) settingsLabels[0].textContent = tr("settings_currency_label");
+    if (settingsLabels[1]) settingsLabels[1].textContent = tr("settings_language_label");
+    setNodeText(document.querySelector("#profileDetailSettingsPage .profile-hint"), tr("settings_hint"));
+    if (els.profileDetailLanguageSelect) {
+      Array.from(els.profileDetailLanguageSelect.options || []).forEach((opt) => {
+        const code = String(opt.value || "");
+        if (languageLabels[code]) opt.textContent = languageLabels[code];
+      });
+    }
+    if (els.profileDetailCurrencySelect) {
+      const uzsOption = Array.from(els.profileDetailCurrencySelect.options || []).find((opt) => String(opt.value) === "UZS");
+      if (uzsOption) {
+        uzsOption.textContent = lang === "ru" ? "UZS (сум)" : "UZS (so'm)";
+      }
+    }
+
+    setNodeText(els.placeholderTitle, tr("placeholder_soon"));
+    setNodeText(document.querySelector("#placeholderScreen p"), tr("placeholder_text"));
+    setNodeText(document.querySelector("#transactionsScreen .panel-head h2"), tr("transactions"));
+    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(2) .panel-head h2"), lang === "ru" ? "Динамика расходов и доходов" : (lang === "uz" ? "Xarajat va daromad dinamikasi" : "Expense and income trend"));
+    setNodeText(document.querySelector("#analyticsComparisonSection .panel-head h2"), lang === "ru" ? "Сравнение периодов" : (lang === "uz" ? "Davrlarni solishtirish" : "Period comparison"));
+    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(4) .panel-head h2"), lang === "ru" ? "Категории расходов" : (lang === "uz" ? "Xarajat kategoriyalari" : "Expense categories"));
+    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(5) .panel-head h2"), lang === "ru" ? "Семейная аналитика" : (lang === "uz" ? "Oilaviy analitika" : "Family analytics"));
+    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(6) .panel-head h2"), lang === "ru" ? "Инсайты" : (lang === "uz" ? "Insightlar" : "Insights"));
+
+    setNodeText(els.navHome && els.navHome.querySelector(".txt"), tr("home"));
+    setNodeText(els.navTransactions && els.navTransactions.querySelector(".txt"), tr("transactions"));
+    setNodeText(els.navConverter && els.navConverter.querySelector(".txt"), tr("analytics"));
+    setNodeText(els.navProfile && els.navProfile.querySelector(".txt"), tr("profile"));
+    if (els.navAdd) {
+      els.navAdd.setAttribute("aria-label", tr("fab_add_aria"));
+    }
+
+    setNodeText(document.querySelector("#dateSheet h3"), tr("date_range_title"));
+    const quickBtns = Array.from(document.querySelectorAll("#dateSheet .quick-btn"));
+    quickBtns.forEach((btn) => {
+      const key = String(btn.dataset.period || "");
+      if (key) btn.textContent = tr(key);
+    });
+    const rangeLabels = Array.from(document.querySelectorAll("#dateSheet .range-row label"));
+    if (rangeLabels[0] && rangeLabels[0].childNodes[0]) rangeLabels[0].childNodes[0].nodeValue = `${tr("date_range_start")}\n            `;
+    if (rangeLabels[1] && rangeLabels[1].childNodes[0]) rangeLabels[1].childNodes[0].nodeValue = `${tr("date_range_end")}\n            `;
+    setNodeText(els.applyCustomPeriodBtn, tr("apply"));
+    setNodeText(els.closeDateSheetBtn, tr("close"));
+    setNodeText(document.querySelector("#categorySheet h3"), tr("category_picker_title"));
+    setNodeText(els.closeCategorySheetBtn, tr("close"));
+
+    updatePeriodLabel();
+  }
+
   function updateProfileSectionMeta() {
     const profileData = normalizeProfileData(state.profile.data || {});
     state.profile.data = profileData;
@@ -1090,21 +1518,27 @@
     const hasEmail = String(profileData.email || "").trim();
     const contactsCount = [hasPhone, hasEmail].filter(Boolean).length;
     els.profileInfoMeta.textContent = contactsCount
-      ? `Контактов заполнено: ${contactsCount}`
-      : "Имя, username и контакты";
-    els.profileSettingsMeta.textContent = `${currencyLabels[profileData.currency]} • ${languageLabels[profileData.language]}`;
-    els.profileSupportMeta.textContent = "Связь с разработчиком и баг-репорт";
+      ? tr("contacts_filled", { count: contactsCount })
+      : tr("profile_info_meta_default");
+    els.profileSettingsMeta.textContent = tr("profile_settings_meta", {
+      currency: currencyLabels[profileData.currency],
+      language: languageLabels[profileData.language],
+    });
+    els.profileSupportMeta.textContent = tr("profile_support_meta_default");
 
     const latestReview = profileData.latest_review;
     if (latestReview && Number(latestReview.rating || 0) >= 1) {
-      els.profileRateBtn.querySelector(".profile-row-meta").textContent = `Текущая оценка: ${latestReview.rating}/5`;
+      els.profileRateBtn.querySelector(".profile-row-meta").textContent = tr("profile_rate_current", {
+        rating: latestReview.rating,
+      });
     } else {
-      els.profileRateBtn.querySelector(".profile-row-meta").textContent = "Оставить оценку и отзыв";
+      els.profileRateBtn.querySelector(".profile-row-meta").textContent = tr("profile_rate_meta_default");
     }
   }
 
   function renderProfileScreen() {
     if (!els.profileScreen) return;
+    applyUiLanguage();
     renderProfileHeader();
     updateProfileSectionMeta();
     if (window.lucide && typeof window.lucide.createIcons === "function") {
@@ -1115,53 +1549,53 @@
   function profileDetailPageConfig(page) {
     if (page === "support-message") {
       return {
-        title: "Связь с разработчиком",
-        subtitle: "Напишите сообщение",
-        actionLabel: "Отправить",
+        title: tr("profile_detail_support_message_title"),
+        subtitle: tr("profile_detail_support_message_subtitle"),
+        actionLabel: tr("send"),
       };
     }
     if (page === "support-bug") {
       return {
-        title: "Сообщить об ошибке",
-        subtitle: "Описание и фото (опционально)",
-        actionLabel: "Отправить",
+        title: tr("profile_detail_support_bug_title"),
+        subtitle: tr("profile_detail_support_bug_subtitle"),
+        actionLabel: tr("send"),
       };
     }
     if (page === "settings") {
       return {
-        title: "Настройки",
-        subtitle: "Язык и валюта",
-        actionLabel: "Сохранить",
+        title: tr("profile_detail_settings_title"),
+        subtitle: tr("profile_detail_settings_subtitle"),
+        actionLabel: tr("save"),
       };
     }
     if (page === "support") {
       return {
-        title: "Поддержка",
-        subtitle: "Связь с разработчиком и ошибки",
-        actionLabel: "Отправить",
+        title: tr("profile_detail_support_title"),
+        subtitle: tr("profile_detail_support_subtitle"),
+        actionLabel: tr("send"),
       };
     }
     if (page === "review") {
       return {
-        title: "Оценить бота",
-        subtitle: "Оценка и комментарий",
-        actionLabel: "Отправить оценку",
+        title: tr("profile_detail_review_title"),
+        subtitle: tr("profile_detail_review_subtitle"),
+        actionLabel: tr("send_rating"),
       };
     }
     return {
-      title: "Личная информация",
-      subtitle: "Ваши данные профиля",
-      actionLabel: "Сохранить",
+      title: tr("profile_detail_info_title"),
+      subtitle: tr("profile_detail_info_subtitle"),
+      actionLabel: tr("save"),
     };
   }
 
   function setProfileSupportKind(kind) {
     state.profile.supportKind = kind === "bug" ? "bug" : "message";
     const isBug = state.profile.supportKind === "bug";
-    els.profileDetailSupportMessageLabel.textContent = isBug ? "Описание ошибки" : "Сообщение разработчику";
+    els.profileDetailSupportMessageLabel.textContent = isBug ? tr("support_bug_description") : tr("support_message_to_dev");
     els.profileDetailSupportMessageInput.placeholder = isBug
-      ? "Что произошло, как повторить, что ожидали увидеть"
-      : "Напишите сообщение разработчику";
+      ? tr("support_bug_placeholder")
+      : tr("support_message_placeholder_compose");
     renderSupportPhotoState();
   }
 
@@ -1178,7 +1612,7 @@
     });
     if (els.profileDetailRatingMeta) {
       els.profileDetailRatingMeta.textContent =
-        rating > 0 ? `Выбрано: ${rating}/5` : "Можно оставить комментарий (необязательно).";
+        rating > 0 ? tr("selected_rating", { rating }) : tr("review_meta_default");
     }
   }
 
@@ -1189,8 +1623,8 @@
     const page = state.profile.detailPage || "";
 
     if (page === "info") {
-      els.profileDetailInfoUsername.textContent = user.username ? `@${user.username}` : "Не указано";
-      els.profileDetailInfoTelegramId.textContent = user.telegramId ? String(user.telegramId) : "Не указано";
+      els.profileDetailInfoUsername.textContent = user.username ? `@${user.username}` : tr("not_specified");
+      els.profileDetailInfoTelegramId.textContent = user.telegramId ? String(user.telegramId) : tr("not_specified");
       els.profileDetailDisplayNameInput.value = String(profileData.display_name || "");
       els.profileDetailPhoneInput.value = String(profileData.phone || "");
       els.profileDetailEmailInput.value = String(profileData.email || "");
@@ -1233,7 +1667,7 @@
       els.profileDetailExistingReviewCard.classList.toggle("hidden", !hasExisting);
       if (hasExisting) {
         els.profileDetailExistingReviewRating.textContent = `${Number(latest.rating || 0)}/5`;
-        els.profileDetailExistingReviewComment.textContent = String(latest.comment || "").trim() || "Без комментария";
+        els.profileDetailExistingReviewComment.textContent = String(latest.comment || "").trim() || tr("no_comment");
       }
       els.profileDetailReviewCommentInput.value = String(state.profile.reviewComment || "");
       setProfileReviewRating(state.profile.reviewRating || 0);
@@ -1252,6 +1686,7 @@
   }
 
   function renderProfileDetailScreen() {
+    applyUiLanguage();
     const page = state.profile.detailPage || "";
     const cfg = profileDetailPageConfig(page);
     els.profileDetailTitle.textContent = cfg.title;
@@ -1278,7 +1713,7 @@
     els.profileDetailSaveBtn.disabled = Boolean(isDisabled);
     els.profileDetailActionsBar.classList.toggle("hidden", page === "support");
     if (page === "review" && !state.profile.reviewEditMode && (state.profile.data || {}).latest_review) {
-      els.profileDetailSaveBtn.textContent = "Оценить заново";
+      els.profileDetailSaveBtn.textContent = tr("review_again");
     }
 
     if (window.lucide && typeof window.lucide.createIcons === "function") {
@@ -1316,7 +1751,7 @@
       if (state.screen === "profile-detail") {
         renderProfileDetailScreen();
       }
-      showToast(userFacingApiError(err, "Профиль загружен частично (без сервера)"));
+      showToast(userFacingApiError(err, tr("profile_partial_loaded")));
     } finally {
       state.profile.loading = false;
     }
@@ -1326,6 +1761,7 @@
     const next = normalizeProfileData(Object.assign({}, state.profile.data || {}, changes || {}));
     state.profile.data = next;
     persistLocalProfileSettingsFromData();
+    applyUiLanguage();
     renderProfileScreen();
     renderProfileDetailScreen();
 
@@ -1343,12 +1779,13 @@
       }
       state.profile.data = normalizeProfileData(Object.assign({}, state.profile.data || {}, profileData));
       persistLocalProfileSettingsFromData();
+      applyUiLanguage();
       renderProfileScreen();
       renderProfileDetailScreen();
-      showToast(successText || "Сохранено");
+      showToast(successText || tr("saved"));
     } catch (err) {
       console.error("profile save failed", err);
-      showToast(userFacingApiError(err, "Не удалось сохранить. Попробуйте ещё раз."));
+      showToast(userFacingApiError(err, tr("save_failed")));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1362,11 +1799,11 @@
     const birthDate = normalizeBirthDateForStorage(String(els.profileDetailBirthDateInput.value || "").trim());
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showToast("Проверьте email");
+      showToast(tr("email_check"));
       return;
     }
     if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
-      showToast("Некорректная дата рождения");
+      showToast(tr("birth_date_invalid"));
       return;
     }
 
@@ -1377,14 +1814,14 @@
         email,
         birth_date: birthDate,
       },
-      "Личные данные сохранены"
+      tr("personal_saved")
     );
   }
 
   async function saveProfileSettingsPage() {
     const currency = normalizeCurrencyCode(els.profileDetailCurrencySelect.value);
     const language = normalizeLanguageCode(els.profileDetailLanguageSelect.value);
-    await saveProfileData({ currency, language }, "Настройки сохранены");
+    await saveProfileData({ currency, language }, tr("settings_saved"));
   }
 
   async function sendProfileSupport() {
@@ -1393,7 +1830,7 @@
     const supportPhotos = kind === "bug" ? supportPhotoItems() : [];
     const hasPhoto = kind === "bug" && supportPhotos.length > 0;
     if (!message && !(kind === "bug" && hasPhoto)) {
-      showToast(kind === "bug" ? "Опишите ошибку" : "Введите сообщение");
+      showToast(kind === "bug" ? tr("support_describe_bug") : tr("support_enter_message"));
       return;
     }
     if (state.profile.saving) return;
@@ -1417,10 +1854,10 @@
       if (kind === "bug") {
         clearSupportPhoto();
       }
-      showToast(kind === "bug" ? "Ошибка отправлена разработчику" : "Сообщение отправлено");
+      showToast(kind === "bug" ? tr("support_sent_bug") : tr("support_sent_message"));
     } catch (err) {
       console.error("support send failed", err);
-      showToast(userFacingApiError(err, "Не удалось отправить сообщение"));
+      showToast(userFacingApiError(err, tr("support_send_failed")));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1431,7 +1868,7 @@
     const rating = Number(state.profile.reviewRating || 0);
     const comment = String(els.profileDetailReviewCommentInput.value || "").trim();
     if (rating < 1 || rating > 5) {
-      showToast("Выберите оценку");
+      showToast(tr("review_choose_rating"));
       return;
     }
     if (state.profile.saving) return;
@@ -1454,10 +1891,10 @@
       state.profile.reviewEditMode = false;
       renderProfileScreen();
       renderProfileDetailScreen();
-      showToast("Спасибо за оценку");
+      showToast(tr("review_thanks"));
     } catch (err) {
       console.error("review submit failed", err);
-      showToast(userFacingApiError(err, "Не удалось отправить оценку"));
+      showToast(userFacingApiError(err, tr("review_send_failed")));
     } finally {
       state.profile.saving = false;
       renderProfileDetailScreen();
@@ -1514,7 +1951,7 @@
   }
 
   async function openProfileScreen() {
-    els.screenTitle.textContent = "Профиль";
+    els.screenTitle.textContent = tr("profile");
     state.profile.detailPage = "";
     els.navAdd.classList.remove("hidden");
     showScreen("profile");
@@ -1528,10 +1965,10 @@
       const restoreScope = String(state.analyticsPage.scopeBeforeOpen || "").trim();
       if (restoreScope) {
         state.scope = restoreScope;
-        const restoreOption = (state.scopeOptions || []).find((item) => String(item.key || "") === restoreScope);
-        if (restoreOption && els.scopeLabel) {
-          els.scopeLabel.textContent = String(restoreOption.label || "Общие расходы");
-        }
+      const restoreOption = (state.scopeOptions || []).find((item) => String(item.key || "") === restoreScope);
+      if (restoreOption && els.scopeLabel) {
+          els.scopeLabel.textContent = String(restoreOption.label || tr("scope_all"));
+      }
       }
       state.analyticsPage.scopeBeforeOpen = null;
     }
@@ -1584,8 +2021,8 @@
     els.navTransactions.classList.remove("active");
     els.navAdd.classList.remove("hidden");
     els.navAdd.classList.toggle("active", title === "+");
-    els.navConverter.classList.toggle("active", title === "Аналитика");
-    els.navProfile.classList.toggle("active", title === "Профиль");
+    els.navConverter.classList.toggle("active", title === tr("analytics"));
+    els.navProfile.classList.toggle("active", title === tr("profile"));
   }
 
   function renderScopeMenu() {
@@ -1595,7 +2032,7 @@
     if (options.length === 0) {
       const row = document.createElement("div");
       row.className = "scope-empty";
-      row.textContent = "Нет вариантов";
+      row.textContent = tr("scope_no_options");
       els.scopeMenu.appendChild(row);
       return;
     }
@@ -1650,7 +2087,13 @@
     (scopeOptions || []).forEach((option) => {
       const userId = parseScopeUserId(option && option.key);
       if (!userId) return;
-      const label = String((option && option.label) || `Участник ${userId}`).trim() || `Участник ${userId}`;
+      const fallbackMember =
+        currentLanguageCode() === "ru"
+          ? `Участник ${userId}`
+          : currentLanguageCode() === "uz"
+            ? `Ishtirokchi ${userId}`
+            : `Member ${userId}`;
+      const label = String((option && option.label) || fallbackMember).trim() || fallbackMember;
       items.push({ id: userId, label });
     });
     return items;
@@ -1667,7 +2110,7 @@
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = recipients.length ? "Выберите участника" : "Нет второго участника";
+    placeholder.textContent = recipients.length ? tr("select_member") : tr("no_second_member");
     els.addTransferRecipientSelect.appendChild(placeholder);
 
     recipients.forEach((member) => {
@@ -1723,15 +2166,15 @@
     els.addTransferRecipientField.classList.toggle("hidden", !isTransfer);
 
     els.addDescriptionLabel.textContent = isTransfer
-      ? "Комментарий (необязательно)"
-      : "Название транзакции";
+      ? tr("add_description_transfer")
+      : tr("add_description_tx");
     els.addDescriptionInput.placeholder = isTransfer
-      ? "Например: перевод за продукты"
-      : "Например: коммуналка";
+      ? tr("add_description_placeholder_transfer")
+      : tr("add_description_placeholder_tx");
 
     els.addSaveBtn.innerHTML = isTransfer
-      ? `${lucideSvg("repeat-2")}Сохранить перевод`
-      : `${lucideSvg("check-circle-2")}Сохранить`;
+      ? `${lucideSvg("repeat-2")}${tr("save_transfer")}`
+      : `${lucideSvg("check-circle-2")}${tr("save")}`;
 
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
@@ -1745,7 +2188,7 @@
   }
 
   function renderAddCategoryValue() {
-    const label = state.addForm.categoryLabel || "Определяю автоматически…";
+    const label = state.addForm.categoryLabel || tr("add_category_auto");
     els.addCategoryValue.textContent = label;
   }
 
@@ -1844,24 +2287,24 @@
 
   function validateAddForm() {
     const amount = parseAmountInput(state.addForm.amountText);
-    if (amount <= 0) return "Введите сумму больше 0";
-    if (!state.addForm.dateValue || !state.addForm.timeValue) return "Укажите дату и время";
+    if (amount <= 0) return tr("amount_gt_zero");
+    if (!state.addForm.dateValue || !state.addForm.timeValue) return tr("pick_date_time");
 
     if (state.addForm.mode === "transfer") {
       const recipientId = Number(state.addForm.recipientUserId || 0);
-      if (!recipientId) return "Выберите получателя перевода";
+      if (!recipientId) return tr("pick_transfer_recipient");
       if (recipientId === Number(state.currentUserId || 0)) {
-        return "Нельзя переводить самому себе";
+        return tr("no_self_transfer");
       }
     } else {
-      if (!String(state.addForm.description || "").trim()) return "Введите название транзакции";
-      if (!state.addForm.kind) return "Выберите тип транзакции";
+      if (!String(state.addForm.description || "").trim()) return tr("enter_tx_name");
+      if (!state.addForm.kind) return tr("pick_tx_type");
     }
 
     const now = new Date();
     const selected = new Date(addFormDateTimeIso());
-    if (Number.isNaN(selected.getTime())) return "Некорректная дата или время";
-    if (selected > now) return "Нельзя выбрать дату/время в будущем";
+    if (Number.isNaN(selected.getTime())) return tr("invalid_datetime");
+    if (selected > now) return tr("future_datetime_forbidden");
     return null;
   }
 
@@ -1884,7 +2327,7 @@
           datetime_local: addFormDateTimeIso(),
         };
         await postJsonWithFallback("create_transfer", transferPayload);
-        showToast("Перевод сохранён");
+        showToast(tr("transfer_saved"));
       } else {
         const payload = {
           kind: state.addForm.kind,
@@ -1894,7 +2337,7 @@
           datetime_local: addFormDateTimeIso(),
         };
         await postJsonWithFallback("create_transaction", payload);
-        showToast("Сохранено");
+        showToast(tr("create_saved"));
       }
 
       state.addForm.amountText = "";
@@ -1910,11 +2353,11 @@
       setAddMode("transaction");
       renderAddCategoryValue();
       await loadOverview();
-      els.screenTitle.textContent = "Главная";
+      els.screenTitle.textContent = tr("home");
       showScreen("home");
     } catch (submitErr) {
       console.error("create transaction failed", submitErr);
-      showToast(`Ошибка: ${String(submitErr.message || "не удалось сохранить")}`);
+      showToast(`${tr("create_error_prefix")}${String(submitErr.message || tr("create_error_fallback"))}`);
     } finally {
       state.addSubmitting = false;
       els.addSaveBtn.disabled = false;
@@ -1942,7 +2385,7 @@
     els.addDescriptionInput.value = state.addForm.description;
     els.addTransferRecipientSelect.value = String(state.addForm.recipientUserId || "");
     renderAddCategoryValue();
-    els.screenTitle.textContent = "Добавить транзакцию";
+    els.screenTitle.textContent = tr("add_transaction_title");
     showScreen("add");
   }
 
@@ -2006,18 +2449,18 @@
       const empty = document.createElement("div");
       empty.className = "empty";
       if (kind === "income") {
-        empty.textContent = "Пока нет доходов за этот период";
+        empty.textContent = tr("recent_empty_income");
       } else if (kind === "expense") {
-        empty.textContent = "Пока нет расходов за этот период";
+        empty.textContent = tr("recent_empty_expense");
       } else {
-        empty.textContent = "Пока нет транзакций за этот период";
+        empty.textContent = tr("recent_empty_all");
       }
       wrap.appendChild(empty);
       if (kind === "income" || kind === "expense") {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "empty-action-btn";
-        btn.textContent = kind === "income" ? "Добавить доход" : "Добавить расход";
+        btn.textContent = kind === "income" ? tr("add_income") : tr("add_expense");
         btn.addEventListener("click", () => {
           openAddScreen(kind);
         });
@@ -2151,8 +2594,8 @@
       ${expenseDots}
     `;
     els.balanceTrendLegend.innerHTML = `
-      <span class="trend-legend-item"><span class="trend-legend-dot income"></span>Доходы</span>
-      <span class="trend-legend-item"><span class="trend-legend-dot expense"></span>Расходы</span>
+      <span class="trend-legend-item"><span class="trend-legend-dot income"></span>${escapeHtml(tr("home_income"))}</span>
+      <span class="trend-legend-item"><span class="trend-legend-dot expense"></span>${escapeHtml(tr("home_expense"))}</span>
     `;
   }
 
@@ -2175,15 +2618,15 @@
       els.breakdownView.classList.remove("hidden");
     }
     if (tab === "income") {
-      els.chartSectionTitle.textContent = "Разбивка доходов";
-      els.recentSectionTitle.textContent = "Последние доходы";
+      els.chartSectionTitle.textContent = tr("home_breakdown_income");
+      els.recentSectionTitle.textContent = tr("home_recent_income");
       renderChartFromBreakdown(buildBreakdownByType("income"));
       renderRecent(getRecentByType("income", 5), "income");
       return;
     }
 
-    els.chartSectionTitle.textContent = "Разбивка расходов";
-    els.recentSectionTitle.textContent = "Последние расходы";
+    els.chartSectionTitle.textContent = tr("home_breakdown_expense");
+    els.recentSectionTitle.textContent = tr("home_recent_expenses");
     renderChartFromBreakdown(buildBreakdownByType("expense"));
     renderRecent(getRecentByType("expense", 5), "expense");
   }
@@ -2645,8 +3088,8 @@
 
   async function loadOverview() {
     if (!state.chatId) {
-      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
-      els.recentList.innerHTML = '<div class="empty">Нет данных по текущему чату.</div>';
+      setStatusBanner(tr("status_need_chat"), "error");
+      els.recentList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_no_chat"))}</div>`;
       return;
     }
     state.isLoading = true;
@@ -2692,10 +3135,10 @@
     } catch (err) {
       state.apiUnavailable = true;
       setStatusBanner(
-        "Не удалось загрузить данные. Проверьте API mini-app (домен /api).",
+        tr("status_api_overview_error"),
         "error"
       );
-      els.recentList.innerHTML = '<div class="empty">Ошибка загрузки отчёта.</div>';
+      els.recentList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_overview_error"))}</div>`;
       console.error("overview fetch failed", err);
       return;
     } finally {
@@ -2705,8 +3148,8 @@
 
   async function loadTransactions() {
     if (!state.chatId) {
-      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
-      els.transactionsList.innerHTML = '<div class="empty">Нет данных по текущему чату.</div>';
+      setStatusBanner(tr("status_need_chat"), "error");
+      els.transactionsList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_no_chat"))}</div>`;
       return;
     }
     state.isLoading = true;
@@ -2720,10 +3163,10 @@
     } catch (err) {
       state.apiUnavailable = true;
       setStatusBanner(
-        "Не удалось загрузить транзакции. Проверьте API mini-app (домен /api).",
+        tr("status_api_transactions_error"),
         "error"
       );
-      els.transactionsList.innerHTML = '<div class="empty">Ошибка загрузки транзакций.</div>';
+      els.transactionsList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_transactions_error"))}</div>`;
       console.error("transactions fetch failed", err);
       return;
     } finally {
@@ -2802,14 +3245,14 @@
 
   async function loadAnalyticsPage() {
     if (!state.chatId) {
-      setStatusBanner("Не передан chat_id. Откройте приложение из группы через кнопку бота.", "error");
-      renderAnalyticsPageEmpty("Нет данных по текущему чату.");
+      setStatusBanner(tr("status_need_chat"), "error");
+      renderAnalyticsPageEmpty(tr("empty_no_chat"));
       return;
     }
     const utils = analyticsUtils();
     if (!utils) {
-      setStatusBanner("Модуль аналитики не загружен.", "error");
-      renderAnalyticsPageEmpty("Модуль аналитики недоступен.");
+      setStatusBanner(tr("api_module_missing"), "error");
+      renderAnalyticsPageEmpty(tr("api_module_unavailable"));
       return;
     }
 
@@ -2864,10 +3307,10 @@
       state.apiUnavailable = true;
       state.analyticsPage.report = null;
       setStatusBanner(
-        "Не удалось загрузить аналитику. Проверьте API mini-app (домен /api).",
+        tr("status_api_analytics_error"),
         "error"
       );
-      renderAnalyticsPageEmpty("Ошибка загрузки аналитики.");
+      renderAnalyticsPageEmpty(tr("empty_analytics_error"));
       console.error("analytics load failed", err);
       return;
     } finally {
@@ -2876,7 +3319,7 @@
   }
 
   async function openAnalyticsScreen() {
-    els.screenTitle.textContent = "Аналитика";
+    els.screenTitle.textContent = tr("analytics");
     els.navAdd.classList.remove("hidden");
     if (state.screen !== "analytics" && !state.analyticsPage.scopeBeforeOpen) {
       state.analyticsPage.scopeBeforeOpen = state.scope;
@@ -3011,7 +3454,7 @@
     });
 
     els.viewAllBtn.addEventListener("click", async () => {
-      els.screenTitle.textContent = "Транзакции";
+      els.screenTitle.textContent = tr("transactions");
       if (state.selectedAnalytics === "income" || state.selectedAnalytics === "expense") {
         state.transactionsTypeFilter = state.selectedAnalytics;
       } else {
@@ -3022,14 +3465,14 @@
     });
 
     els.navHome.addEventListener("click", async () => {
-      els.screenTitle.textContent = "Главная";
+      els.screenTitle.textContent = tr("home");
       els.navAdd.classList.remove("hidden");
       showScreen("home");
       await loadOverview();
     });
 
     els.navTransactions.addEventListener("click", async () => {
-      els.screenTitle.textContent = "Транзакции";
+      els.screenTitle.textContent = tr("transactions");
       state.transactionsTypeFilter = "all";
       els.navAdd.classList.remove("hidden");
       showScreen("transactions");
@@ -3107,25 +3550,25 @@
       const currentPhotos = supportPhotoItems();
       const freeSlots = Math.max(0, supportBugPhotoLimit - currentPhotos.length);
       if (freeSlots <= 0) {
-        showToast(`Можно добавить до ${supportBugPhotoLimit} фото`);
+        showToast(tr("photos_limit_max", { limit: supportBugPhotoLimit }));
         els.profileDetailSupportPhotoInput.value = "";
         return;
       }
 
       const candidates = selectedFiles.slice(0, freeSlots);
       if (selectedFiles.length > freeSlots) {
-        showToast(`Добавлено только ${freeSlots} фото (лимит ${supportBugPhotoLimit})`);
+        showToast(tr("photos_added_partial", { count: freeSlots, limit: supportBugPhotoLimit }));
       }
 
       const invalidType = candidates.find((file) => !String(file.type || "").toLowerCase().startsWith("image/"));
       if (invalidType) {
-        showToast("Нужны только файлы изображений");
+        showToast(tr("only_images"));
         els.profileDetailSupportPhotoInput.value = "";
         return;
       }
       const tooLarge = candidates.find((file) => Number(file.size || 0) > supportBugPhotoMaxBytes);
       if (tooLarge) {
-        showToast("Каждое фото должно быть до 4 МБ");
+        showToast(tr("photo_size_limit"));
         els.profileDetailSupportPhotoInput.value = "";
         return;
       }
@@ -3146,7 +3589,7 @@
           renderSupportPhotoState();
         })
         .catch((err) => {
-          showToast(String((err && err.message) || "").trim() || "Не удалось прочитать фото");
+          showToast(String((err && err.message) || "").trim() || tr("photo_read_error"));
           if (els.profileDetailSupportPhotoInput) {
             els.profileDetailSupportPhotoInput.value = "";
           }
@@ -3182,10 +3625,11 @@
     renderTransferRecipients();
     setDefaultAddDateTime();
     renderAddCategoryValue();
+    applyUiLanguage();
     renderProfileScreen();
     await loadCategoriesForAdd();
     updatePeriodLabel();
-    els.scopeLabel.textContent = "Общие расходы";
+    els.scopeLabel.textContent = tr("scope_all");
     showScreen("home");
     await loadOverview();
 
