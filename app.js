@@ -38,11 +38,37 @@
     tg.expand();
   }
 
+  function parseStartParamChatId(raw) {
+    const value = String(raw || "").trim();
+    if (!value) return 0;
+
+    const directNumber = Number(value);
+    if (Number.isFinite(directNumber) && directNumber !== 0) {
+      return Math.trunc(directNumber);
+    }
+
+    const prefixed = /^chat_(-?\d+)$/.exec(value);
+    if (prefixed) {
+      const parsed = Number(prefixed[1] || 0);
+      if (Number.isFinite(parsed) && parsed !== 0) {
+        return Math.trunc(parsed);
+      }
+    }
+
+    return 0;
+  }
+
   const query = new URLSearchParams(window.location.search);
   const tgInitData = String((tg && tg.initData) || "");
   const tgInitUserId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0);
   const tgInitChatId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
-  const chatId = Number(query.get("chat_id") || String(tgInitChatId || 0));
+  const tgStartParam = String(
+    query.get("tgWebAppStartParam") ||
+      (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+      ""
+  ).trim();
+  const tgStartParamChatId = parseStartParamChatId(tgStartParam);
+  const chatId = Number(query.get("chat_id") || String(tgInitChatId || tgStartParamChatId || 0));
   const currentUserId = Number(query.get("user_id") || String(tgInitUserId || 0));
   const apiBaseParam = String(query.get("api_base") || "").trim();
 
