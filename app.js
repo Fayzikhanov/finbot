@@ -68,7 +68,9 @@
       ""
   ).trim();
   const tgStartParamChatId = parseStartParamChatId(tgStartParam);
-  const chatId = Number(query.get("chat_id") || String(tgInitChatId || tgStartParamChatId || 0));
+  const chatId = Number(
+    query.get("chat_id") || String(tgInitChatId || tgStartParamChatId || tgInitUserId || 0)
+  );
   const currentUserId = Number(query.get("user_id") || String(tgInitUserId || 0));
   const apiBaseParam = String(query.get("api_base") || "").trim();
 
@@ -755,6 +757,15 @@
     if (fromTgChat !== 0) {
       state.chatId = fromTgChat;
       return fromTgChat;
+    }
+    if (tgStartParamChatId !== 0) {
+      state.chatId = tgStartParamChatId;
+      return tgStartParamChatId;
+    }
+    const fromTgUser = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0);
+    if (fromTgUser > 0) {
+      state.chatId = fromTgUser;
+      return fromTgUser;
     }
     return 0;
   }
