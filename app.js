@@ -843,7 +843,7 @@
 
     if (!items.length) {
       els.donut.innerHTML = `
-        <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Разбивка расходов">
+        <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${escapeHtml(tr('home_breakdown_expense'))}">
           <circle class="donut-track" cx="${center}" cy="${center}" r="${(outerRadius + innerRadius) / 2}" />
         </svg>
       `;
@@ -900,7 +900,7 @@
       .join("");
 
     els.donut.innerHTML = `
-      <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Разбивка расходов">
+      <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${escapeHtml(tr('home_breakdown_expense'))}">
         <circle class="donut-track" cx="${center}" cy="${center}" r="${(outerRadius + innerRadius) / 2}" />
         ${segments}
       </svg>
@@ -910,7 +910,13 @@
   function renderLegend(items, activeKey) {
     els.chartLegend.innerHTML = "";
     if (!items.length) {
-      els.chartLegend.innerHTML = '<div class="empty">Нет данных по категориям.</div>';
+      const emptyText =
+        currentLanguageCode() === "ru"
+          ? "Нет данных по категориям."
+          : currentLanguageCode() === "uz"
+            ? "Kategoriyalar bo'yicha ma'lumot yo'q."
+            : "No category data.";
+      els.chartLegend.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
       return;
     }
 
@@ -1839,7 +1845,15 @@
     try {
       await postJsonWithFallback("support", {
         kind,
-        message: message || (kind === "bug" && hasPhoto ? "Фото без описания" : ""),
+        message:
+          message ||
+          (kind === "bug" && hasPhoto
+            ? (currentLanguageCode() === "ru"
+                ? "Фото без описания"
+                : currentLanguageCode() === "uz"
+                  ? "Tavsifsiz foto"
+                  : "Photo without description")
+            : ""),
         photos:
           kind === "bug"
             ? supportPhotos.map((photo) => ({
@@ -2404,7 +2418,7 @@
     const rows = (state.currentTransactions || []).filter((tx) => String(tx.kind || "") === kind);
     const grouped = new Map();
     rows.forEach((row) => {
-      const label = String(row.category_label || "Прочее").trim() || "Прочее";
+      const label = String(row.category_label || tr("other")).trim() || tr("other");
       const key = normalizeCategoryKey(label);
       const amount = Number(row.amount || 0);
       if (!grouped.has(key)) {
@@ -2471,8 +2485,16 @@
     }
     items.forEach((item) => {
       const txKind = String(item.kind || "expense");
-      const title = escapeHtml(item.description || item.category_label || "Операция");
-      const label = escapeHtml(item.category_label || "Прочее");
+      const title = escapeHtml(
+        item.description ||
+          item.category_label ||
+          (currentLanguageCode() === "ru"
+            ? "Операция"
+            : currentLanguageCode() === "uz"
+              ? "Operatsiya"
+              : "Transaction")
+      );
+      const label = escapeHtml(item.category_label || tr("other"));
       const amountClass = txKind === "income" ? "income" : "expense";
       const sign = txKind === "income" ? "+" : "-";
       const tx = document.createElement("article");
@@ -2656,7 +2678,7 @@
     state.scopeOptions = scopeOptions;
     state.memberOptions = extractMemberOptions(scopeOptions);
     renderTransferRecipients();
-    els.scopeLabel.textContent = scopeItem ? scopeItem.label : "Общие расходы";
+    els.scopeLabel.textContent = scopeItem ? scopeItem.label : tr("scope_all");
 
     const periodObj = payload && payload.period ? payload.period : {};
     state.period = periodObj.mode || state.period;
@@ -2693,10 +2715,10 @@
       empty.className = "empty";
       empty.textContent =
         typeFilter === "income"
-          ? "Нет доходов за выбранный период."
+          ? (currentLanguageCode() === "ru" ? "Нет доходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun daromadlar yo'q." : "No income for the selected period.")
           : typeFilter === "expense"
-            ? "Нет расходов за выбранный период."
-            : "Нет транзакций за выбранный период.";
+            ? (currentLanguageCode() === "ru" ? "Нет расходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun xarajatlar yo'q." : "No expenses for the selected period.")
+            : (currentLanguageCode() === "ru" ? "Нет транзакций за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun tranzaksiyalar yo'q." : "No transactions for the selected period.");
       els.transactionsList.appendChild(empty);
       return;
     }
@@ -2705,8 +2727,16 @@
       const tx = document.createElement("article");
       const amountCls = item.kind === "income" ? "income" : "expense";
       const sign = item.kind === "income" ? "+" : "-";
-      const title = escapeHtml(item.description || item.category_label || "Операция");
-      const label = escapeHtml(item.category_label || "Прочее");
+      const title = escapeHtml(
+        item.description ||
+          item.category_label ||
+          (currentLanguageCode() === "ru"
+            ? "Операция"
+            : currentLanguageCode() === "uz"
+              ? "Operatsiya"
+              : "Transaction")
+      );
+      const label = escapeHtml(item.category_label || tr("other"));
       tx.className = "tx-item";
       tx.innerHTML = `
         <div class="tx-icon ${amountCls}">${lucideSvg(
@@ -2730,22 +2760,38 @@
   }
 
   function analyticsEmptyHtml(text) {
-    return `<div class="empty">${escapeHtml(text || "Нет данных за выбранный период.")}</div>`;
+    const fallback =
+      currentLanguageCode() === "ru"
+        ? "Нет данных за выбранный период."
+        : currentLanguageCode() === "uz"
+          ? "Tanlangan davr uchun ma'lumot yo'q."
+          : "No data for the selected period.";
+    return `<div class="empty">${escapeHtml(text || fallback)}</div>`;
   }
 
   function renderAnalyticsHero(report) {
     if (!els.analyticsHero) return;
     const hero = report && report.hero ? report.hero : null;
     if (!hero) {
-      els.analyticsHero.innerHTML = analyticsEmptyHtml("Нет главного вывода за выбранный период.");
+      els.analyticsHero.innerHTML = analyticsEmptyHtml(
+        currentLanguageCode() === "ru"
+          ? "Нет главного вывода за выбранный период."
+          : currentLanguageCode() === "uz"
+            ? "Tanlangan davr uchun asosiy xulosa yo'q."
+            : "No key insight for the selected period."
+      );
       return;
     }
     const tone = String(hero.tone || "neutral");
     let valueText = "";
     if (hero.valueType === "money") {
-      valueText = `на ${fmtMoney(hero.value || 0, false)}`;
+      valueText =
+        (currentLanguageCode() === "ru" ? "на " : currentLanguageCode() === "uz" ? "" : "by ") +
+        fmtMoney(hero.value || 0, false);
     } else if (hero.valueType === "percent") {
-      valueText = `на ${fmtPercent(Math.abs(Number(hero.value || 0)))}%`;
+      valueText =
+        (currentLanguageCode() === "ru" ? "на " : currentLanguageCode() === "uz" ? "" : "by ") +
+        `${fmtPercent(Math.abs(Number(hero.value || 0)))}%`;
     } else {
       valueText = String(hero.valueText || "—");
     }
@@ -2754,7 +2800,7 @@
       <div class="analytics-hero-card ${tone}">
         <div class="analytics-hero-icon ${tone}">${lucideSvg(iconName, { width: 18, height: 18 })}</div>
         <div class="analytics-hero-body">
-          <div class="analytics-hero-title">${escapeHtml(hero.title || "Главный вывод")}</div>
+          <div class="analytics-hero-title">${escapeHtml(hero.title || (currentLanguageCode() === "ru" ? "Главный вывод" : currentLanguageCode() === "uz" ? "Asosiy xulosa" : "Key insight"))}</div>
           <div class="analytics-hero-value ${tone}">${escapeHtml(valueText)}</div>
           <div class="analytics-hero-sub">${escapeHtml(hero.subtitle || "")}</div>
         </div>
@@ -2777,7 +2823,7 @@
         <div class="analytics-status-head">
           <div class="analytics-status-main">
             <span class="analytics-status-icon ${tone}">${lucideSvg(iconName, { width: 14, height: 14 })}</span>
-            <span class="analytics-status-label">${escapeHtml(status.label || "Финансовое состояние")}</span>
+            <span class="analytics-status-label">${escapeHtml(status.label || (currentLanguageCode() === "ru" ? "Финансовое состояние" : currentLanguageCode() === "uz" ? "Moliyaviy holat" : "Financial status"))}</span>
           </div>
           ${game && game.badgeText ? `<span class="analytics-status-badge">${escapeHtml(game.badgeText)}</span>` : ""}
         </div>
@@ -2796,8 +2842,8 @@
     if (Number(forecast.avgExpensePerDay || 0) <= 0) {
       els.analyticsForecast.innerHTML = `
         <div class="analytics-forecast-card">
-          <div class="analytics-forecast-title">Прогноз до конца месяца</div>
-          <div class="analytics-forecast-text">Пока недостаточно расходов, чтобы построить прогноз.</div>
+          <div class="analytics-forecast-title">${escapeHtml(currentLanguageCode() === "ru" ? "Прогноз до конца месяца" : currentLanguageCode() === "uz" ? "Oy oxirigacha prognoz" : "Forecast to month end")}</div>
+          <div class="analytics-forecast-text">${escapeHtml(currentLanguageCode() === "ru" ? "Пока недостаточно расходов, чтобы построить прогноз." : currentLanguageCode() === "uz" ? "Prognoz tuzish uchun hozircha xarajatlar yetarli emas." : "Not enough expenses yet to build a forecast.")}</div>
         </div>
       `;
       return;
@@ -2808,17 +2854,19 @@
     const forecastWarn = projected > income && projected > 0;
     els.analyticsForecast.innerHTML = `
       <div class="analytics-forecast-card ${forecastWarn ? "warning" : "positive"}">
-        <div class="analytics-forecast-title">Прогноз до конца месяца</div>
+        <div class="analytics-forecast-title">${escapeHtml(currentLanguageCode() === "ru" ? "Прогноз до конца месяца" : currentLanguageCode() === "uz" ? "Oy oxirigacha prognoz" : "Forecast to month end")}</div>
         <div class="analytics-forecast-text">
-          Если сохранится текущий темп, расходы составят ~ ${fmtMoney(projected, false)}
+          ${escapeHtml(currentLanguageCode() === "ru" ? "Если сохранится текущий темп, расходы составят ~" : currentLanguageCode() === "uz" ? "Hozirgi sur'at saqlansa, xarajatlar taxminan" : "If the current pace continues, expenses will be about")} ${fmtMoney(projected, false)}
         </div>
         <div class="analytics-forecast-note ${forecastWarn ? "warning" : "positive"}">
-          ${forecastWarn ? "При текущем темпе вы уйдёте в минус" : "Вы останетесь в плюсе при текущем темпе"}
+          ${forecastWarn
+            ? (currentLanguageCode() === "ru" ? "При текущем темпе вы уйдёте в минус" : currentLanguageCode() === "uz" ? "Hozirgi sur'atda balans manfiy bo'ladi" : "At the current pace you may go negative")
+            : (currentLanguageCode() === "ru" ? "Вы останетесь в плюсе при текущем темпе" : currentLanguageCode() === "uz" ? "Hozirgi sur'atda ijobiy balans saqlanadi" : "You stay positive at the current pace")}
         </div>
         <div class="analytics-forecast-meta">
           ${remainingDays > 0
-            ? `Осталось ${remainingDays} дн.`
-            : "Сегодня последний день месяца"}
+            ? (currentLanguageCode() === "ru" ? `Осталось ${remainingDays} дн.` : currentLanguageCode() === "uz" ? `${remainingDays} kun qoldi` : `${remainingDays} days left`)
+            : (currentLanguageCode() === "ru" ? "Сегодня последний день месяца" : currentLanguageCode() === "uz" ? "Bugun oyning oxirgi kuni" : "Today is the last day of the month")}
         </div>
       </div>
     `;
@@ -2840,8 +2888,8 @@
     const blocks = [];
     if (showExpense) {
       blocks.push(`
-      <div class="analytics-delta-card">
-        <div class="analytics-delta-label">Расходы к прошлому периоду</div>
+        <div class="analytics-delta-card">
+        <div class="analytics-delta-label">${escapeHtml(currentLanguageCode() === "ru" ? "Расходы к прошлому периоду" : currentLanguageCode() === "uz" ? "Xarajatlar oldingi davrga nisbatan" : "Expenses vs previous period")}</div>
         <div class="analytics-delta-value ${expenseClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.expensePct : null)}
         </div>
@@ -2849,8 +2897,8 @@
     }
     if (showIncome) {
       blocks.push(`
-      <div class="analytics-delta-card">
-        <div class="analytics-delta-label">Доходы к прошлому периоду</div>
+        <div class="analytics-delta-card">
+        <div class="analytics-delta-label">${escapeHtml(currentLanguageCode() === "ru" ? "Доходы к прошлому периоду" : currentLanguageCode() === "uz" ? "Daromadlar oldingi davrga nisbatan" : "Income vs previous period")}</div>
         <div class="analytics-delta-value ${incomeClass}">
           ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.incomePct : null)}
         </div>
@@ -2871,7 +2919,13 @@
     }
     const cmp = report && report.comparison ? report.comparison : null;
     if (!cmp || !cmp.metrics) {
-      els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml("Нет данных для сравнения периодов.");
+      els.analyticsComparisonCard.innerHTML = analyticsEmptyHtml(
+        currentLanguageCode() === "ru"
+          ? "Нет данных для сравнения периодов."
+          : currentLanguageCode() === "uz"
+            ? "Davrlarni solishtirish uchun ma'lumot yo'q."
+            : "No data for period comparison."
+      );
       return;
     }
     const metrics = cmp.metrics || {};
@@ -2895,9 +2949,9 @@
 
     els.analyticsComparisonCard.innerHTML = `
       <div class="analytics-compact-delta-card">
-        ${rowHtml("Расходы", "expense", true)}
-        ${rowHtml("Доходы", "income", true)}
-        ${rowHtml("Баланс", "balance", false)}
+        ${rowHtml(currentLanguageCode() === "ru" ? "Расходы" : currentLanguageCode() === "uz" ? "Xarajatlar" : "Expenses", "expense", true)}
+        ${rowHtml(currentLanguageCode() === "ru" ? "Доходы" : currentLanguageCode() === "uz" ? "Daromadlar" : "Income", "income", true)}
+        ${rowHtml(currentLanguageCode() === "ru" ? "Баланс" : currentLanguageCode() === "uz" ? "Balans" : "Balance", "balance", false)}
       </div>
     `;
   }
@@ -2908,7 +2962,13 @@
     const primary = focus && focus.primary ? focus.primary : null;
     const secondary = Array.isArray(focus && focus.secondary) ? focus.secondary : [];
     if (!primary) {
-      els.analyticsTopCategories.innerHTML = analyticsEmptyHtml("Нет расходов за выбранный период.");
+      els.analyticsTopCategories.innerHTML = analyticsEmptyHtml(
+        currentLanguageCode() === "ru"
+          ? "Нет расходов за выбранный период."
+          : currentLanguageCode() === "uz"
+            ? "Tanlangan davrda xarajatlar yo'q."
+            : "No expenses for the selected period."
+      );
       return;
     }
 
@@ -2918,12 +2978,12 @@
     els.analyticsTopCategories.innerHTML = `
       <div class="analytics-focus-card">
         <div class="analytics-focus-title">
-          Основной источник расходов — ${escapeHtml(primary.label || "Прочее")} (${Math.round(Number(primary.sharePct || 0))}%)
+          ${escapeHtml(currentLanguageCode() === "ru" ? "Основной источник расходов" : currentLanguageCode() === "uz" ? "Asosiy xarajat manbai" : "Main expense source")} — ${escapeHtml(primary.label || tr("other"))} (${Math.round(Number(primary.sharePct || 0))}%)
         </div>
         <div class="analytics-focus-value">${fmtMoney(primary.amount || 0, false)}</div>
         <div class="analytics-focus-meta">
           ${primaryTrendText ? `<span class="analytics-chip ${primaryTrendClass}">${primaryTrendText}</span>` : ""}
-          <span class="analytics-chip">${fmtMoney(primary.deltaAbs || 0, true)} к прошлому периоду</span>
+          <span class="analytics-chip">${fmtMoney(primary.deltaAbs || 0, true)} ${escapeHtml(periodComparisonLabel(state.period))}</span>
         </div>
       </div>
       ${secondary.length ? `
@@ -2931,7 +2991,7 @@
           ${secondary.map((row) => `
             <div class="analytics-compact-row">
               <div class="analytics-compact-row-main">
-                <span class="analytics-compact-row-name">${escapeHtml(row.label || "Прочее")}</span>
+                <span class="analytics-compact-row-name">${escapeHtml(row.label || tr("other"))}</span>
                 <span class="analytics-compact-row-share">${Math.round(Number(row.sharePct || 0))}%</span>
               </div>
               <div class="analytics-compact-row-side">${fmtMoney(row.amount || 0, false)}</div>
@@ -2948,7 +3008,13 @@
     const rows = Array.isArray(participants.rows) ? participants.rows : [];
     const familyBehavior = report && report.familyBehavior ? report.familyBehavior : null;
     if (!rows.length) {
-      els.analyticsParticipants.innerHTML = analyticsEmptyHtml("Нет данных по участникам для выбранного периода.");
+      els.analyticsParticipants.innerHTML = analyticsEmptyHtml(
+        currentLanguageCode() === "ru"
+          ? "Нет данных по участникам для выбранного периода."
+          : currentLanguageCode() === "uz"
+            ? "Tanlangan davr uchun ishtirokchilar bo'yicha ma'lumot yo'q."
+            : "No participant data for the selected period."
+      );
       return;
     }
     const leader = (familyBehavior && familyBehavior.leader) || rows[0];
@@ -2961,13 +3027,13 @@
         ${statement ? `<div class="analytics-family-statement">${escapeHtml(statement)}</div>` : ""}
         <div class="analytics-family-leader">
           <div class="analytics-row-head">
-            <div class="analytics-row-title">${escapeHtml((leader && leader.name) || "Участник")}</div>
+            <div class="analytics-row-title">${escapeHtml((leader && leader.name) || (currentLanguageCode() === "ru" ? "Участник" : currentLanguageCode() === "uz" ? "Ishtirokchi" : "Member"))}</div>
             <div class="analytics-row-value">${fmtMoney((leader && leader.expense) || 0, false)}</div>
           </div>
           <div class="analytics-family-meta">
-            <span>${Math.round(Number((leader && leader.sharePct) || 0))}% семейных расходов</span>
-            <span class="muted">Средний чек ${fmtMoney((leader && leader.avgCheck) || 0, false)}</span>
-            <span class="muted">${Number((leader && leader.txCount) || 0)} транз.</span>
+            <span>${Math.round(Number((leader && leader.sharePct) || 0))}% ${escapeHtml(currentLanguageCode() === "ru" ? "семейных расходов" : currentLanguageCode() === "uz" ? "oilaviy xarajatlar" : "of family expenses")}</span>
+            <span class="muted">${escapeHtml(currentLanguageCode() === "ru" ? "Средний чек" : currentLanguageCode() === "uz" ? "O'rtacha chek" : "Average check")} ${fmtMoney((leader && leader.avgCheck) || 0, false)}</span>
+            <span class="muted">${Number((leader && leader.txCount) || 0)} ${escapeHtml(currentLanguageCode() === "ru" ? "транз." : currentLanguageCode() === "uz" ? "tranz." : "tx")}</span>
           </div>
         </div>
       </div>
@@ -2976,7 +3042,7 @@
           ${others.map((row) => `
             <div class="analytics-compact-row">
               <div class="analytics-compact-row-main">
-                <span class="analytics-compact-row-name">${escapeHtml(row.name || "Участник")}</span>
+                <span class="analytics-compact-row-name">${escapeHtml(row.name || (currentLanguageCode() === "ru" ? "Участник" : currentLanguageCode() === "uz" ? "Ishtirokchi" : "Member"))}</span>
                 <span class="analytics-compact-row-share">${Math.round(Number(row.sharePct || 0))}%</span>
               </div>
               <div class="analytics-compact-row-side">${fmtMoney(row.expense || 0, false)}</div>
@@ -2991,7 +3057,13 @@
     if (!els.analyticsInsights) return;
     const insights = Array.isArray(report && report.insights) ? report.insights : [];
     if (!insights.length) {
-      els.analyticsInsights.innerHTML = analyticsEmptyHtml("Недостаточно данных для инсайтов.");
+      els.analyticsInsights.innerHTML = analyticsEmptyHtml(
+        currentLanguageCode() === "ru"
+          ? "Недостаточно данных для инсайтов."
+          : currentLanguageCode() === "uz"
+            ? "Insightlar uchun ma'lumot yetarli emas."
+            : "Not enough data for insights."
+      );
       return;
     }
 
@@ -3004,21 +3076,23 @@
 
     function insightTitle(item) {
       if (item.key === "category-share") {
-        return `${Math.round(Number(item.sharePct || 0))}% расходов приходится на ${item.categoryLabel || "основную категорию"}`;
+        return `${Math.round(Number(item.sharePct || 0))}% ${
+          currentLanguageCode() === "ru" ? "расходов приходится на" : currentLanguageCode() === "uz" ? "xarajatlar ulushi" : "of expenses come from"
+        } ${item.categoryLabel || (currentLanguageCode() === "ru" ? "основную категорию" : currentLanguageCode() === "uz" ? "asosiy kategoriya" : "the main category")}`;
       }
       if (item.key === "category-growth") {
-        return `${item.categoryLabel || "Категория"}: рост расходов`;
+        return `${item.categoryLabel || (currentLanguageCode() === "ru" ? "Категория" : currentLanguageCode() === "uz" ? "Kategoriya" : "Category")}: ${currentLanguageCode() === "ru" ? "рост расходов" : currentLanguageCode() === "uz" ? "xarajatlar o'sishi" : "expense growth"}`;
       }
       if (item.key === "category-drop") {
-        return `${item.categoryLabel || "Категория"}: снижение расходов`;
+        return `${item.categoryLabel || (currentLanguageCode() === "ru" ? "Категория" : currentLanguageCode() === "uz" ? "Kategoriya" : "Category")}: ${currentLanguageCode() === "ru" ? "снижение расходов" : currentLanguageCode() === "uz" ? "xarajatlar kamayishi" : "expense decrease"}`;
       }
       if (item.key === "max-day") {
-        return `${formatDateLabel(item.dateIso)} — самый затратный день`;
+        return `${formatDateLabel(item.dateIso)} — ${currentLanguageCode() === "ru" ? "самый затратный день" : currentLanguageCode() === "uz" ? "eng ko'p xarajat qilingan kun" : "highest-spending day"}`;
       }
       if (item.key === "avg-day-expense") {
-        return "В среднем вы тратите в день";
+        return currentLanguageCode() === "ru" ? "В среднем вы тратите в день" : currentLanguageCode() === "uz" ? "Kuniga o'rtacha xarajat" : "Average daily spending";
       }
-      return String(item.title || "Инсайт");
+      return String(item.title || (currentLanguageCode() === "ru" ? "Инсайт" : currentLanguageCode() === "uz" ? "Insight" : "Insight"));
     }
 
     function insightText(item) {
@@ -3027,17 +3101,19 @@
       }
       if (item.key === "category-growth") {
         const pctText = fmtSignedPercentNullable(item.pct);
-        return `${fmtMoney(item.amount || 0, true)} (${pctText}) к прошлому периоду.`;
+        return `${fmtMoney(item.amount || 0, true)} (${pctText}) ${periodComparisonLabel(state.period)}.`;
       }
       if (item.key === "category-drop") {
         const pctText = fmtSignedPercentNullable(item.pct);
-        return `Меньше на ${fmtMoney(item.amount || 0, false)} (${pctText}) к прошлому периоду.`;
+        return `${
+          currentLanguageCode() === "ru" ? "Меньше на" : currentLanguageCode() === "uz" ? "Kamroq:" : "Lower by"
+        } ${fmtMoney(item.amount || 0, false)} (${pctText}) ${periodComparisonLabel(state.period)}.`;
       }
       if (item.key === "max-day") {
-        return `${fmtMoney(item.amount || 0, false)} расходов.`;
+        return `${fmtMoney(item.amount || 0, false)} ${currentLanguageCode() === "ru" ? "расходов." : currentLanguageCode() === "uz" ? "xarajat." : "spent."}`;
       }
       if (item.key === "avg-day-expense") {
-        return `${fmtMoney(item.amount || 0, false)} в день.`;
+        return `${fmtMoney(item.amount || 0, false)} ${currentLanguageCode() === "ru" ? "в день." : currentLanguageCode() === "uz" ? "kuniga." : "per day."}`;
       }
       return "";
     }
@@ -3073,7 +3149,7 @@
 
   function renderAnalyticsPage(report) {
     if (!report) {
-      renderAnalyticsPageEmpty("Нет данных за выбранный период.");
+      renderAnalyticsPageEmpty();
       return;
     }
     renderAnalyticsHero(report);
