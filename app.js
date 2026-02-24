@@ -1,4 +1,19 @@
 (function () {
+  // Telegram iOS WebView on older devices may not support String.prototype.replaceAll.
+  if (typeof String.prototype.replaceAll !== "function") {
+    // eslint-disable-next-line no-extend-native
+    String.prototype.replaceAll = function replaceAllCompat(search, replacement) {
+      const source = String(this);
+      if (search instanceof RegExp) {
+        if (!search.global) {
+          throw new TypeError("replaceAll requires a global RegExp");
+        }
+        return source.replace(search, replacement);
+      }
+      return source.split(String(search)).join(String(replacement));
+    };
+  }
+
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 
   function applyIosInputZoomFix() {
