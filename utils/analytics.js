@@ -1,6 +1,145 @@
 (function (global) {
   "use strict";
 
+  function normalizeLangCode(value) {
+    const raw = String(value || "").toLowerCase();
+    if (raw === "uz") return "uz";
+    if (raw === "en") return "en";
+    return "ru";
+  }
+
+  const L10N = {
+    ru: {
+      other: "Прочее",
+      member: "Участник",
+      insight_category_growth: "Категория с наибольшим ростом",
+      insight_category_drop: "Самое заметное снижение расходов",
+      insight_max_day: "Самый затратный день",
+      insight_avg_day_expense: "Средний расход в день",
+      period_today: "Сегодня",
+      period_week: "На этой неделе",
+      period_month: "В этом месяце",
+      period_year: "В этом году",
+      period_custom: "За выбранный период",
+      hero_positive_title: "{period} вы в плюсе",
+      hero_positive_subtitle: "Вы тратите меньше, чем зарабатываете",
+      hero_expense_up_title: "Расходы выросли",
+      hero_income_down_title: "Доходы снизились",
+      hero_compare_subtitle: "по сравнению с прошлым периодом",
+      hero_negative_title: "{period} вы в минусе",
+      hero_negative_subtitle: "Расходы превышают доходы",
+      hero_stable_title: "{period} без резких изменений",
+      hero_stable_value: "Стабильно",
+      hero_stable_subtitle: "Сильных отклонений не видно",
+      family_dominant: "{name} — основной источник расходов в семье",
+      family_even: "Расходы распределены равномерно",
+      financial_danger_label: "Финансовое состояние: Расходы превышают доходы",
+      financial_danger_desc: "Текущий темп расходов выше вашего дохода.",
+      financial_warning_label: "Финансовое состояние: Есть риск роста расходов",
+      financial_warning_desc: "Прогноз расходов близок к уровню дохода.",
+      financial_stable_label: "Финансовое состояние: Стабильное",
+      financial_stable_desc: "Доход покрывает текущий темп расходов.",
+      financial_neutral_label: "Финансовое состояние: Нейтральное",
+      financial_neutral_desc: "Нужны данные за больший период для уверенной оценки.",
+      streak_month_1: "месяц",
+      streak_month_2_4: "месяца",
+      streak_month_5: "месяцев",
+      streak_week_1: "неделя",
+      streak_week_2_4: "недели",
+      streak_week_5: "недель",
+      streak_year_1: "год",
+      streak_year_2_4: "года",
+      streak_year_5: "лет",
+      streak_day_1: "день",
+      streak_day_2_4: "дня",
+      streak_day_5: "дней",
+      streak_period_1: "период",
+      streak_period_2_4: "периода",
+      streak_period_5: "периодов",
+      gamification_badge: "{count} {periodLabel} подряд в плюсе",
+    },
+    uz: {
+      other: "Boshqa",
+      member: "Ishtirokchi",
+      insight_category_growth: "Eng ko'p o'sgan kategoriya",
+      insight_category_drop: "Xarajatlar eng ko'p kamaygan kategoriya",
+      insight_max_day: "Eng ko'p xarajat qilingan kun",
+      insight_avg_day_expense: "Kunlik o'rtacha xarajat",
+      period_today: "Bugun",
+      period_week: "Shu haftada",
+      period_month: "Shu oyda",
+      period_year: "Shu yilda",
+      period_custom: "Tanlangan davrda",
+      hero_positive_title: "{period} ijobiy balansdasiz",
+      hero_positive_subtitle: "Siz daromaddan kamroq xarajat qilyapsiz",
+      hero_expense_up_title: "Xarajatlar oshdi",
+      hero_income_down_title: "Daromadlar kamaydi",
+      hero_compare_subtitle: "oldingi davrga nisbatan",
+      hero_negative_title: "{period} manfiy balansdasiz",
+      hero_negative_subtitle: "Xarajatlar daromaddan yuqori",
+      hero_stable_title: "{period} keskin o'zgarish yo'q",
+      hero_stable_value: "Barqaror",
+      hero_stable_subtitle: "Kuchli og'ishlar ko'rinmadi",
+      family_dominant: "{name} — oiladagi asosiy xarajat manbai",
+      family_even: "Xarajatlar teng taqsimlangan",
+      financial_danger_label: "Moliyaviy holat: Xarajatlar daromaddan yuqori",
+      financial_danger_desc: "Joriy xarajat sur'ati daromadingizdan yuqori.",
+      financial_warning_label: "Moliyaviy holat: Xarajatlar o'sish xavfi bor",
+      financial_warning_desc: "Xarajatlar prognozi daromad darajasiga yaqin.",
+      financial_stable_label: "Moliyaviy holat: Barqaror",
+      financial_stable_desc: "Daromad joriy xarajat sur'atini qoplaydi.",
+      financial_neutral_label: "Moliyaviy holat: Neytral",
+      financial_neutral_desc: "Ishonchli baho uchun ko'proq davr ma'lumoti kerak.",
+      gamification_badge: "{count} {periodLabel} ketma-ket ijobiy balans",
+    },
+    en: {
+      other: "Other",
+      member: "Member",
+      insight_category_growth: "Category with the biggest increase",
+      insight_category_drop: "Most noticeable expense decrease",
+      insight_max_day: "Highest-spending day",
+      insight_avg_day_expense: "Average daily expense",
+      period_today: "Today",
+      period_week: "This week",
+      period_month: "This month",
+      period_year: "This year",
+      period_custom: "Selected period",
+      hero_positive_title: "{period} you are in the positive",
+      hero_positive_subtitle: "You spend less than you earn",
+      hero_expense_up_title: "Expenses increased",
+      hero_income_down_title: "Income decreased",
+      hero_compare_subtitle: "compared to the previous period",
+      hero_negative_title: "{period} you are in the negative",
+      hero_negative_subtitle: "Expenses exceed income",
+      hero_stable_title: "{period} without sharp changes",
+      hero_stable_value: "Stable",
+      hero_stable_subtitle: "No significant deviations detected",
+      family_dominant: "{name} is the main source of family expenses",
+      family_even: "Expenses are distributed evenly",
+      financial_danger_label: "Financial status: Expenses exceed income",
+      financial_danger_desc: "Your current spending pace is above your income.",
+      financial_warning_label: "Financial status: Risk of rising expenses",
+      financial_warning_desc: "Projected expenses are close to your income level.",
+      financial_stable_label: "Financial status: Stable",
+      financial_stable_desc: "Income covers the current spending pace.",
+      financial_neutral_label: "Financial status: Neutral",
+      financial_neutral_desc: "More data is needed for a confident assessment.",
+      gamification_badge: "{count} {periodLabel} in a row with positive balance",
+    },
+  };
+
+  function t(lang, key, vars) {
+    const code = normalizeLangCode(lang);
+    const pack = L10N[code] || L10N.ru;
+    let text = Object.prototype.hasOwnProperty.call(pack, key) ? pack[key] : (L10N.ru[key] || key);
+    if (vars && typeof text === "string") {
+      Object.keys(vars).forEach((name) => {
+        text = text.split(`{${name}}`).join(String(vars[name]));
+      });
+    }
+    return String(text || key);
+  }
+
   function parseDateOnly(value) {
     if (!value) return null;
     const dt = new Date(`${value}T00:00:00`);
@@ -49,8 +188,9 @@
     return Number((row && row.amount) || 0);
   }
 
-  function categoryLabelOf(row) {
-    return String((row && row.category_label) || "Прочее").trim() || "Прочее";
+  function categoryLabelOf(row, lang) {
+    const fallback = t(lang, "other");
+    return String((row && row.category_label) || fallback).trim() || fallback;
   }
 
   function normalizeCategoryKey(label) {
@@ -131,13 +271,13 @@
     return { labels, income, expense };
   }
 
-  function groupExpensesByCategory(items) {
+  function groupExpensesByCategory(items, lang) {
     const grouped = new Map();
     (Array.isArray(items) ? items : []).forEach((row) => {
       if (kindOf(row) !== "expense") return;
       const amount = amountOf(row);
       if (amount <= 0) return;
-      const label = categoryLabelOf(row);
+      const label = categoryLabelOf(row, lang);
       const key = normalizeCategoryKey(label);
       const bucket = grouped.get(key) || { key, label, amount: 0 };
       bucket.amount += amount;
@@ -146,9 +286,9 @@
     return Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
   }
 
-  function buildTopCategories(currentItems, previousItems, limit) {
-    const current = groupExpensesByCategory(currentItems);
-    const previous = groupExpensesByCategory(previousItems);
+  function buildTopCategories(currentItems, previousItems, limit, lang) {
+    const current = groupExpensesByCategory(currentItems, lang);
+    const previous = groupExpensesByCategory(previousItems, lang);
     const prevMap = new Map(previous.map((row) => [row.key, Number(row.amount || 0)]));
     const totalExpense = current.reduce((acc, row) => acc + Number(row.amount || 0), 0);
     return current.slice(0, Math.max(0, Number(limit || 3))).map((row) => {
@@ -195,7 +335,8 @@
     };
   }
 
-  function buildParticipants(memberBuckets) {
+  function buildParticipants(memberBuckets, lang) {
+    const uiLang = normalizeLangCode(lang);
     const rows = (Array.isArray(memberBuckets) ? memberBuckets : []).map((bucket) => {
       const items = Array.isArray(bucket && bucket.items) ? bucket.items : [];
       const expenseItems = items.filter((row) => kindOf(row) === "expense");
@@ -204,14 +345,14 @@
       const avgCheck = expenseTxCount > 0 ? expenseTotal / expenseTxCount : 0;
       return {
         userId: Number((bucket && bucket.userId) || 0),
-        name: String((bucket && bucket.name) || "Участник"),
+        name: String((bucket && bucket.name) || t(uiLang, "member")),
         expense: expenseTotal,
         txCount: expenseTxCount,
         avgCheck,
       };
     });
 
-    rows.sort((a, b) => b.expense - a.expense || a.name.localeCompare(b.name, "ru"));
+    rows.sort((a, b) => b.expense - a.expense || a.name.localeCompare(b.name, uiLang));
     const totalFamilyExpense = rows.reduce((acc, row) => acc + Number(row.expense || 0), 0);
     const topUserId = rows.length ? Number(rows[0].userId || 0) : 0;
 
@@ -266,9 +407,9 @@
     };
   }
 
-  function buildBiggestExpenseCategoryChange(currentItems, previousItems) {
-    const current = groupExpensesByCategory(currentItems);
-    const previous = groupExpensesByCategory(previousItems);
+  function buildBiggestExpenseCategoryChange(currentItems, previousItems, lang) {
+    const current = groupExpensesByCategory(currentItems, lang);
+    const previous = groupExpensesByCategory(previousItems, lang);
     const prevMap = new Map(previous.map((row) => [row.key, row]));
     let bestGrowth = null;
     let bestDrop = null;
@@ -314,17 +455,18 @@
     return found;
   }
 
-  function buildInsights(currentItems, previousItems, startIso, endIso) {
+  function buildInsights(currentItems, previousItems, startIso, endIso, lang) {
+    const uiLang = normalizeLangCode(lang);
     const totals = buildTotals(currentItems);
     const dayStats = buildExpenseDayStats(currentItems, startIso, endIso);
-    const catChange = buildBiggestExpenseCategoryChange(currentItems, previousItems);
+    const catChange = buildBiggestExpenseCategoryChange(currentItems, previousItems, uiLang);
     const insights = [];
 
     if (catChange.bestGrowth) {
       insights.push({
         key: "category-growth",
         kind: "warning",
-        title: "Категория с наибольшим ростом",
+        title: t(uiLang, "insight_category_growth"),
         value: catChange.bestGrowth.label,
         amount: catChange.bestGrowth.deltaAbs,
         pct: catChange.bestGrowth.deltaPct,
@@ -333,7 +475,7 @@
       insights.push({
         key: "category-drop",
         kind: "positive",
-        title: "Самое заметное снижение расходов",
+        title: t(uiLang, "insight_category_drop"),
         value: catChange.bestDrop.label,
         amount: Math.abs(catChange.bestDrop.deltaAbs),
         pct: catChange.bestDrop.deltaPct,
@@ -344,7 +486,7 @@
       insights.push({
         key: "max-day",
         kind: "neutral",
-        title: "Самый затратный день",
+        title: t(uiLang, "insight_max_day"),
         value: dayStats.maxDay.date,
         amount: dayStats.maxDay.amount,
       });
@@ -354,7 +496,7 @@
       insights.push({
         key: "avg-day-expense",
         kind: "neutral",
-        title: "Средний расход в день",
+        title: t(uiLang, "insight_avg_day_expense"),
         amount: dayStats.avgExpensePerDay,
       });
     }
@@ -362,66 +504,68 @@
     return insights.slice(0, 3);
   }
 
-  function heroPeriodPhrase(periodMode) {
-    if (periodMode === "today") return "Сегодня";
-    if (periodMode === "week") return "На этой неделе";
-    if (periodMode === "month") return "В этом месяце";
-    if (periodMode === "year") return "В этом году";
-    return "За выбранный период";
+  function heroPeriodPhrase(periodMode, lang) {
+    const uiLang = normalizeLangCode(lang);
+    if (periodMode === "today") return t(uiLang, "period_today");
+    if (periodMode === "week") return t(uiLang, "period_week");
+    if (periodMode === "month") return t(uiLang, "period_month");
+    if (periodMode === "year") return t(uiLang, "period_year");
+    return t(uiLang, "period_custom");
   }
 
-  function buildHeroSummary(currentTotals, trendChange, periodMode) {
+  function buildHeroSummary(currentTotals, trendChange, periodMode, lang) {
+    const uiLang = normalizeLangCode(lang);
     const balance = Number((currentTotals && currentTotals.balance) || 0);
     const expensePct = trendChange ? Number(trendChange.expensePct || 0) : 0;
     const incomePct = trendChange ? trendChange.incomePct : null;
-    const periodText = heroPeriodPhrase(periodMode);
+    const periodText = heroPeriodPhrase(periodMode, uiLang);
 
     if (balance > 0) {
       return {
         tone: "positive",
-        title: `${periodText} вы в плюсе`,
+        title: t(uiLang, "hero_positive_title", { period: periodText }),
         valueType: "money",
         value: balance,
-        subtitle: "Вы тратите меньше, чем зарабатываете",
+        subtitle: t(uiLang, "hero_positive_subtitle"),
       };
     }
 
     if (Number.isFinite(expensePct) && expensePct > 10) {
       return {
         tone: "warning",
-        title: "Расходы выросли",
+        title: t(uiLang, "hero_expense_up_title"),
         valueType: "percent",
         value: expensePct,
-        subtitle: "по сравнению с прошлым периодом",
+        subtitle: t(uiLang, "hero_compare_subtitle"),
       };
     }
 
     if (incomePct !== null && Number.isFinite(Number(incomePct)) && Number(incomePct) < 0) {
       return {
         tone: "warning",
-        title: "Доходы снизились",
+        title: t(uiLang, "hero_income_down_title"),
         valueType: "percent",
         value: Math.abs(Number(incomePct)),
-        subtitle: "по сравнению с прошлым периодом",
+        subtitle: t(uiLang, "hero_compare_subtitle"),
       };
     }
 
     if (balance < 0) {
       return {
         tone: "warning",
-        title: `${periodText} вы в минусе`,
+        title: t(uiLang, "hero_negative_title", { period: periodText }),
         valueType: "money",
         value: Math.abs(balance),
-        subtitle: "Расходы превышают доходы",
+        subtitle: t(uiLang, "hero_negative_subtitle"),
       };
     }
 
     return {
       tone: "neutral",
-      title: `${periodText} без резких изменений`,
+      title: t(uiLang, "hero_stable_title", { period: periodText }),
       valueType: "text",
-      valueText: "Стабильно",
-      subtitle: "Сильных отклонений не видно",
+      valueText: t(uiLang, "hero_stable_value"),
+      subtitle: t(uiLang, "hero_stable_subtitle"),
     };
   }
 
@@ -433,7 +577,8 @@
     };
   }
 
-  function buildFamilyBehavior(participants) {
+  function buildFamilyBehavior(participants, lang) {
+    const uiLang = normalizeLangCode(lang);
     const model = participants && typeof participants === "object" ? participants : { rows: [] };
     const rows = Array.isArray(model.rows) ? model.rows : [];
     const leader = rows.length ? rows[0] : null;
@@ -443,9 +588,9 @@
     let statement = "";
     if (leader && Number(leader.expense || 0) > 0) {
       if (dominant) {
-        statement = `${leader.name} — основной источник расходов в семье`;
+        statement = t(uiLang, "family_dominant", { name: leader.name });
       } else {
-        statement = "Расходы распределены равномерно";
+        statement = t(uiLang, "family_even");
       }
     }
 
@@ -474,7 +619,8 @@
     };
   }
 
-  function buildFinancialStatus(currentTotals, forecast) {
+  function buildFinancialStatus(currentTotals, forecast, lang) {
+    const uiLang = normalizeLangCode(lang);
     const income = Number((currentTotals && currentTotals.income) || 0);
     const expense = Number((currentTotals && currentTotals.expense) || 0);
     const balance = Number((currentTotals && currentTotals.balance) || 0);
@@ -484,49 +630,69 @@
     if (expense > income || projected > income) {
       return {
         tone: "danger",
-        label: "Финансовое состояние: Расходы превышают доходы",
-        description: "Текущий темп расходов выше вашего дохода.",
+        label: t(uiLang, "financial_danger_label"),
+        description: t(uiLang, "financial_danger_desc"),
       };
     }
 
     if (balance > 0 && income > 0 && projected > incomeThreshold) {
       return {
         tone: "warning",
-        label: "Финансовое состояние: Есть риск роста расходов",
-        description: "Прогноз расходов близок к уровню дохода.",
+        label: t(uiLang, "financial_warning_label"),
+        description: t(uiLang, "financial_warning_desc"),
       };
     }
 
     if (balance > 0 && projected <= income) {
       return {
         tone: "stable",
-        label: "Финансовое состояние: Стабильное",
-        description: "Доход покрывает текущий темп расходов.",
+        label: t(uiLang, "financial_stable_label"),
+        description: t(uiLang, "financial_stable_desc"),
       };
     }
 
     return {
       tone: "neutral",
-      label: "Финансовое состояние: Нейтральное",
-      description: "Нужны данные за больший период для уверенной оценки.",
+      label: t(uiLang, "financial_neutral_label"),
+      description: t(uiLang, "financial_neutral_desc"),
     };
   }
 
-  function streakPeriodLabel(periodMode, count) {
+  function streakPeriodLabel(periodMode, count, lang) {
+    const uiLang = normalizeLangCode(lang);
     const n = Number(count || 0);
-    if (periodMode === "month") return n >= 5 ? "месяцев" : n >= 2 && n <= 4 ? "месяца" : "месяц";
-    if (periodMode === "week") return n >= 2 && n <= 4 ? "недели" : "недель";
-    if (periodMode === "year") return n === 1 ? "год" : n >= 2 && n <= 4 ? "года" : "лет";
-    if (periodMode === "today") return n >= 2 && n <= 4 ? "дня" : "дней";
-    return n >= 2 && n <= 4 ? "периода" : "периодов";
+    if (uiLang === "uz") {
+      if (periodMode === "month") return "oy";
+      if (periodMode === "week") return "hafta";
+      if (periodMode === "year") return "yil";
+      if (periodMode === "today") return "kun";
+      return "davr";
+    }
+    if (uiLang === "en") {
+      const plural = n === 1 ? "" : "s";
+      if (periodMode === "month") return `month${plural}`;
+      if (periodMode === "week") return `week${plural}`;
+      if (periodMode === "year") return `year${plural}`;
+      if (periodMode === "today") return `day${plural}`;
+      return `period${plural}`;
+    }
+    if (periodMode === "month") return n >= 5 ? t(uiLang, "streak_month_5") : n >= 2 && n <= 4 ? t(uiLang, "streak_month_2_4") : t(uiLang, "streak_month_1");
+    if (periodMode === "week") return n >= 5 || n === 0 ? t(uiLang, "streak_week_5") : n >= 2 && n <= 4 ? t(uiLang, "streak_week_2_4") : t(uiLang, "streak_week_1");
+    if (periodMode === "year") return n >= 5 ? t(uiLang, "streak_year_5") : n >= 2 && n <= 4 ? t(uiLang, "streak_year_2_4") : t(uiLang, "streak_year_1");
+    if (periodMode === "today") return n >= 5 || n === 0 ? t(uiLang, "streak_day_5") : n >= 2 && n <= 4 ? t(uiLang, "streak_day_2_4") : t(uiLang, "streak_day_1");
+    return n >= 5 || n === 0 ? t(uiLang, "streak_period_5") : n >= 2 && n <= 4 ? t(uiLang, "streak_period_2_4") : t(uiLang, "streak_period_1");
   }
 
-  function buildGamification(periodMode, positiveBalanceStreak) {
+  function buildGamification(periodMode, positiveBalanceStreak, lang) {
+    const uiLang = normalizeLangCode(lang);
     const count = Number(positiveBalanceStreak || 0);
     if (!Number.isFinite(count) || count < 2) return null;
     return {
       positiveBalanceStreak: count,
-      badgeText: `${count} ${streakPeriodLabel(periodMode, count)} подряд в плюсе`,
+      badgeText: t(uiLang, "gamification_badge", {
+        count,
+        periodLabel: streakPeriodLabel(periodMode, count, uiLang),
+      }),
     };
   }
 
@@ -572,6 +738,7 @@
   }
 
   function buildAnalyticsReport(options) {
+    const lang = normalizeLangCode(options && options.lang);
     const currentItems = Array.isArray(options && options.currentItems) ? options.currentItems : [];
     const previousItems = Array.isArray(options && options.previousItems) ? options.previousItems : [];
     const startIso = String((options && options.startIso) || "");
@@ -583,9 +750,9 @@
     const currentTotals = buildTotals(currentItems);
     const previousTotals = buildTotals(previousItems);
     const comparison = buildPeriodComparison(currentItems, previousItems);
-    const topCategories = buildTopCategories(currentItems, previousItems, 3);
+    const topCategories = buildTopCategories(currentItems, previousItems, 3, lang);
     const categoryFocus = buildCategoryFocus(topCategories);
-    const participants = buildParticipants(participantBuckets);
+    const participants = buildParticipants(participantBuckets, lang);
     const dayStats = buildExpenseDayStats(currentItems, startIso, endIso);
     dayStats.currentExpenseTotal = currentTotals.expense;
     const trendChange = {
@@ -594,7 +761,7 @@
     };
     const forecast = buildForecast(dayStats, endIso);
     const insights = buildInterpretationInsights(
-      buildInsights(currentItems, previousItems, startIso, endIso),
+      buildInsights(currentItems, previousItems, startIso, endIso, lang),
       categoryFocus
     );
     const previousPeriodTotal = Number(previousTotals.expense || 0) + Number(previousTotals.income || 0);
@@ -614,11 +781,11 @@
       topCategories,
       categoryFocus,
       participants,
-      familyBehavior: buildFamilyBehavior(participants),
-      hero: buildHeroSummary(currentTotals, trendChange, periodMode),
+      familyBehavior: buildFamilyBehavior(participants, lang),
+      hero: buildHeroSummary(currentTotals, trendChange, periodMode, lang),
       forecast,
-      financialStatus: buildFinancialStatus(currentTotals, forecast),
-      gamification: buildGamification(periodMode, positiveBalanceStreak),
+      financialStatus: buildFinancialStatus(currentTotals, forecast, lang),
+      gamification: buildGamification(periodMode, positiveBalanceStreak, lang),
       insights,
     };
   }
