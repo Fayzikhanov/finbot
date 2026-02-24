@@ -58,13 +58,26 @@
     return 0;
   }
 
+  function readStartParamFromInitDataRaw(rawInitData) {
+    const raw = String(rawInitData || "").trim();
+    if (!raw) return "";
+    try {
+      const params = new URLSearchParams(raw);
+      return String(params.get("start_param") || "").trim();
+    } catch (_err) {
+      return "";
+    }
+  }
+
   const query = new URLSearchParams(window.location.search);
   const tgInitData = String((tg && tg.initData) || "");
+  const tgStartParamFromInitDataRaw = readStartParamFromInitDataRaw(tgInitData);
   const tgInitUserId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0);
   const tgInitChatId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
   const tgStartParam = String(
     query.get("tgWebAppStartParam") ||
       (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+      tgStartParamFromInitDataRaw ||
       ""
   ).trim();
   const tgStartParamChatId = parseStartParamChatId(tgStartParam);
