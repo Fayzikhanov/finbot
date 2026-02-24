@@ -3381,7 +3381,7 @@
   }
 
   async function loadOverview() {
-    if (!state.chatId) {
+    if (!effectiveChatId()) {
       setStatusBanner(tr("status_need_chat"), "error");
       els.recentList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_no_chat"))}</div>`;
       return;
@@ -3441,7 +3441,7 @@
   }
 
   async function loadTransactions() {
-    if (!state.chatId) {
+    if (!effectiveChatId()) {
       setStatusBanner(tr("status_need_chat"), "error");
       els.transactionsList.innerHTML = `<div class="empty">${escapeHtml(tr("empty_no_chat"))}</div>`;
       return;
@@ -3538,7 +3538,7 @@
   }
 
   async function loadAnalyticsPage() {
-    if (!state.chatId) {
+    if (!effectiveChatId()) {
       setStatusBanner(tr("status_need_chat"), "error");
       renderAnalyticsPageEmpty(tr("empty_no_chat"));
       return;
