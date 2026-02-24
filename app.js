@@ -39,6 +39,7 @@
   }
 
   const query = new URLSearchParams(window.location.search);
+  const tgInitData = String((tg && tg.initData) || "");
   const tgInitUserId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0);
   const tgInitChatId = Number((tg && tg.initDataUnsafe && tg.initDataUnsafe.chat && tg.initDataUnsafe.chat.id) || 0);
   const chatId = Number(query.get("chat_id") || String(tgInitChatId || 0));
@@ -1125,6 +1126,45 @@
     return params.toString();
   }
 
+  function buildApiHeaders(extraHeaders) {
+    const headers = Object.assign({}, extraHeaders || {});
+    // The backend validates Telegram Mini App auth strictly from the signed initData string.
+    headers["X-Telegram-Init-Data"] = tgInitData;
+    return headers;
+  }
+
+  function isIdempotentWriteEndpoint(endpoint) {
+    const normalized = String(endpoint || "").replace(/^\/+/, "");
+    return normalized === "create_transaction"
+      || normalized === "create_transfer"
+      || normalized === "support"
+      || normalized === "review";
+  }
+
+  function generateUuidV4() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    const bytes = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i += 1) {
+        bytes[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return [
+      hex.slice(0, 8),
+      hex.slice(8, 12),
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20, 32),
+    ].join("-");
+  }
+
   async function fetchJsonWithFallback(endpoint, overrides) {
     const suffix = endpoint.replace(/^\/+/, "");
     const qs = buildApiParams(overrides);
@@ -1132,7 +1172,10 @@
     for (const base of apiCandidates) {
       const url = `${base}/${suffix}?${qs}`;
       try {
-        const resp = await fetch(url, { cache: "no-store" });
+        const resp = await fetch(url, {
+          cache: "no-store",
+          headers: buildApiHeaders(),
+        });
         if (!resp.ok) {
           lastError = new Error(`HTTP ${resp.status}: ${url}`);
           continue;
@@ -1155,13 +1198,18 @@
   async function postJsonWithFallback(endpoint, payload) {
     const suffix = endpoint.replace(/^\/+/, "");
     const qs = buildPostQuery();
+    const idempotencyKey = isIdempotentWriteEndpoint(endpoint) ? generateUuidV4() : "";
     let lastError = null;
     for (const base of apiCandidates) {
       const url = `${base}/${suffix}?${qs}`;
       try {
+        const headers = buildApiHeaders({ "Content-Type": "application/json" });
+        if (idempotencyKey) {
+          headers["Idempotency-Key"] = idempotencyKey;
+        }
         const resp = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload || {}),
           cache: "no-store",
         });
