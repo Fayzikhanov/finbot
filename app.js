@@ -118,7 +118,7 @@
       mode: "month",
       scope: "all",
       scopeMenuOpen: false,
-      highlightCurrentWeek: true,
+      highlightCurrentWeek: false,
       loading: false,
       error: "",
       requestId: 0,
@@ -386,6 +386,7 @@
       analytics_calendar_this_week: "Эта неделя",
       analytics_calendar_prev_month: "Предыдущий месяц",
       analytics_calendar_next_month: "Следующий месяц",
+      analytics_calendar_total_month: "Всего за месяц",
       analytics_calendar_retry: "Повторить",
       analytics_calendar_no_day_expenses: "Нет расходов за день",
       profile: "Профиль",
@@ -559,6 +560,7 @@
     analytics_calendar_this_week: "Shu hafta",
     analytics_calendar_prev_month: "Oldingi oy",
     analytics_calendar_next_month: "Keyingi oy",
+    analytics_calendar_total_month: "Oy bo'yicha jami",
     analytics_calendar_retry: "Qayta urinish",
     analytics_calendar_no_day_expenses: "Bu kun uchun xarajat yo'q",
     profile: "Profil",
@@ -662,6 +664,7 @@
     analytics_calendar_this_week: "This week",
     analytics_calendar_prev_month: "Previous month",
     analytics_calendar_next_month: "Next month",
+    analytics_calendar_total_month: "Total for month",
     analytics_calendar_retry: "Retry",
     analytics_calendar_no_day_expenses: "No expenses for the day",
     profile: "Profile",
@@ -1079,6 +1082,15 @@
     return capitalizeFirst(raw);
   }
 
+  function formatMonthOnlyLabel(dt) {
+    const raw = String(
+      new Intl.DateTimeFormat(uiLocale(), {
+        month: "long",
+      }).format(dt) || ""
+    ).trim();
+    return capitalizeFirst(raw);
+  }
+
   function formatCompactAmountUZS(amount) {
     const value = Math.max(0, Math.round(Number(amount || 0)));
     if (value === 0) return "0";
@@ -1189,7 +1201,7 @@
       cal.scope = "all";
     }
     if (typeof cal.highlightCurrentWeek !== "boolean") {
-      cal.highlightCurrentWeek = true;
+      cal.highlightCurrentWeek = false;
     }
     if (!cal.cache || typeof cal.cache !== "object") {
       cal.cache = Object.create(null);
@@ -1216,6 +1228,12 @@
     if (!cal) return null;
     const cacheKey = analyticsCalendarCacheKey(analyticsCalendarCurrentScopeKey(), cal.visibleMonthKey);
     return (cal.cache && cal.cache[cacheKey]) || null;
+  }
+
+  function analyticsCalendarMonthTotalAmount(cacheEntry) {
+    const totals = cacheEntry && cacheEntry.dailyExpenseTotals ? cacheEntry.dailyExpenseTotals : null;
+    if (!totals || typeof totals !== "object") return 0;
+    return Object.values(totals).reduce((sum, value) => sum + Number(value || 0), 0);
   }
 
   function analyticsCalendarDayAriaLabel(cell, amountValue, showAmount) {
@@ -1310,25 +1328,7 @@
 
     for (let rowStart = 0; rowStart < cells.length; rowStart += 7) {
       const rowCells = cells.slice(rowStart, rowStart + 7);
-      const weekCols = rowCells
-        .map((cell, colIdx) => (
-          cell &&
-          !cell.placeholder &&
-          cell.weekHighlightOn &&
-          cell.inCurrentWeek
-            ? colIdx + 1
-            : 0
-        ))
-        .filter(Boolean);
-      const weekStartCol = weekCols.length ? Math.min(...weekCols) : 0;
-      const weekEndCol = weekCols.length ? Math.max(...weekCols) : 0;
-      const rowClasses = [
-        "analytics-calendar-row",
-        weekCols.length ? "has-current-week" : "",
-      ].filter(Boolean).join(" ");
-      const rowStyle = weekCols.length
-        ? ` style="--week-start-col:${weekStartCol}; --week-end-col:${weekEndCol};"`
-        : "";
+      const rowClasses = "analytics-calendar-row";
 
       const rowHtml = rowCells.map((cell, colIdx) => {
         const isWeekend = colIdx >= 5;
@@ -1344,7 +1344,6 @@
           cell.outsideType === "leading" ? "is-leading-month" : "",
           isWeekend ? "weekend" : "",
           cell.isToday ? "is-today" : "",
-          cell.weekHighlightOn && cell.inCurrentWeek ? "is-current-week" : "",
           canOpen ? "is-clickable" : "is-disabled",
         ].filter(Boolean).join(" ");
         const amountClasses = [
@@ -1373,7 +1372,7 @@
         `;
       }).join("");
 
-      rows.push(`<div class="${rowClasses}"${rowStyle}>${rowHtml}</div>`);
+      rows.push(`<div class="${rowClasses}">${rowHtml}</div>`);
     }
 
     return `<div class="analytics-calendar-grid">${rows.join("")}</div>`;
@@ -1386,6 +1385,7 @@
 
     const monthDate = analyticsCalendarVisibleMonthDate();
     const monthLabel = formatMonthYearLabel(monthDate);
+    const monthNavLabel = formatMonthOnlyLabel(monthDate);
     const weekdayLabels = calendarWeekdayLabels();
     const hasFamilyFilter = analyticsCalendarHasFamilyMode();
     const scopeLabel = analyticsCalendarCurrentScopeLabel();
@@ -1394,9 +1394,12 @@
     const showSkeleton = Boolean(cal.loading && !cacheEntry && !futureMonth);
     const showError = Boolean(cal.error && !cacheEntry && !futureMonth);
     const scopeOptions = hasFamilyFilter ? analyticsCalendarAvailableScopeOptions() : [];
+    const monthTotalAmount = cacheEntry ? analyticsCalendarMonthTotalAmount(cacheEntry) : 0;
+    const showTotalLoading = Boolean(cal.loading && !cacheEntry && !futureMonth);
+    const monthTotalText = fmtMoney(monthTotalAmount, false);
     const prevChevronIcon = lucideSvg("chevron-left", { width: 18, height: 18 }) || '<span class="analytics-calendar-nav-icon-fallback" aria-hidden="true">‹</span>';
     const nextChevronIcon = lucideSvg("chevron-right", { width: 18, height: 18 }) || '<span class="analytics-calendar-nav-icon-fallback" aria-hidden="true">›</span>';
-    const weekToggleIcon = lucideSvg("calendar-range", { width: 14, height: 14 }) || '<span class="analytics-calendar-chip-icon-fallback" aria-hidden="true">◷</span>';
+    const expenseIcon = lucideSvg("wallet", { width: 18, height: 18 }) || '<span class="analytics-calendar-hero-icon-fallback" aria-hidden="true">◫</span>';
 
     let bodyHtml = "";
     if (showError) {
@@ -1418,21 +1421,30 @@
     }
 
     els.analyticsExpensesCalendar.innerHTML = `
+      <div class="analytics-calendar-overview">
+        <div class="analytics-calendar-overview-head">
+          <div class="analytics-calendar-overview-icon">${expenseIcon}</div>
+          <div class="analytics-calendar-overview-copy">
+            <div class="analytics-calendar-overview-kind">${escapeHtml(tr("home_expense"))}</div>
+            <div class="analytics-calendar-overview-month">${escapeHtml(monthLabel)}</div>
+          </div>
+        </div>
+        <div class="analytics-calendar-total-card">
+          <div class="analytics-calendar-total-label">${escapeHtml(tr("analytics_calendar_total_month"))}</div>
+          <div class="analytics-calendar-total-value${showTotalLoading ? " is-loading" : ""}">${showTotalLoading ? "" : escapeHtml(monthTotalText)}</div>
+        </div>
+      </div>
       <div class="analytics-calendar-toolbar">
         <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-main">
           <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
             <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
               ${prevChevronIcon}
             </button>
-            <div class="analytics-calendar-month-label">${escapeHtml(monthLabel)}</div>
+            <div class="analytics-calendar-month-label">${escapeHtml(monthNavLabel)}</div>
             <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="next-month" aria-label="${escapeHtml(tr("analytics_calendar_next_month"))}">
               ${nextChevronIcon}
             </button>
           </div>
-          <button type="button" class="analytics-calendar-week-toggle${cal.highlightCurrentWeek ? " active" : ""}" data-calendar-action="toggle-week" aria-pressed="${cal.highlightCurrentWeek ? "true" : "false"}">
-            ${weekToggleIcon}
-            <span>${escapeHtml(tr("analytics_calendar_this_week"))}</span>
-          </button>
         </div>
         ${hasFamilyFilter ? `
           <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary analytics-calendar-toolbar-row-scope">
@@ -4428,13 +4440,6 @@
         }
         if (action === "next-month") {
           void shiftAnalyticsExpensesCalendarMonth(1);
-          return;
-        }
-        if (action === "toggle-week") {
-          const cal = ensureAnalyticsExpensesCalendarState();
-          if (!cal) return;
-          cal.highlightCurrentWeek = !cal.highlightCurrentWeek;
-          renderAnalyticsExpensesCalendar();
           return;
         }
         if (action === "toggle-scope-menu") {
