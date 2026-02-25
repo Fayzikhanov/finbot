@@ -5559,3 +5559,44 @@ body {
 .app.is-home-screen .topbar .icon-btn:disabled {
   opacity: 1;
 }
+
+/* EOF override 4: home gradient height + chevron icon parity */
+.app.is-home-screen::before {
+  height: 332px !important;
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger::after {
+  content: none !important;
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger .home-scope-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger .home-scope-chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger .home-scope-chevron svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+}
+
+@media (max-width: 420px) {
+  .app.is-home-screen::before {
+    height: 318px !important;
+  }
+
+  .app.is-home-screen .topbar h1.home-scope-trigger .home-scope-chevron svg {
+    width: 15px;
+    height: 15px;
+  }
+}
