@@ -110,6 +110,19 @@
       initialized: false,
       report: null,
       scopeBeforeOpen: null,
+      returnContext: null,
+    },
+    analyticsCalendar: {
+      initialized: false,
+      visibleMonthKey: "",
+      mode: "month",
+      scope: "all",
+      scopeMenuOpen: false,
+      highlightCurrentWeek: true,
+      loading: false,
+      error: "",
+      requestId: 0,
+      cache: Object.create(null),
     },
     categoriesByKind: { expense: [], income: [] },
     addForm: {
@@ -185,6 +198,13 @@
     analyticsHero: document.getElementById("analyticsHero"),
     analyticsStatus: document.getElementById("analyticsStatus"),
     analyticsForecast: document.getElementById("analyticsForecast"),
+    analyticsExpensesCalendarTitle: document.getElementById("analyticsExpensesCalendarTitle"),
+    analyticsExpensesCalendar: document.getElementById("analyticsExpensesCalendar"),
+    analyticsTrendTitle: document.getElementById("analyticsTrendTitle"),
+    analyticsComparisonTitle: document.getElementById("analyticsComparisonTitle"),
+    analyticsCategoriesTitle: document.getElementById("analyticsCategoriesTitle"),
+    analyticsFamilyTitle: document.getElementById("analyticsFamilyTitle"),
+    analyticsInsightsTitle: document.getElementById("analyticsInsightsTitle"),
     analyticsTrendChanges: document.getElementById("analyticsTrendChanges"),
     analyticsComparisonSection: document.getElementById("analyticsComparisonSection"),
     analyticsComparisonCard: document.getElementById("analyticsComparisonCard"),
@@ -361,6 +381,13 @@
       home: "Главная",
       transactions: "Транзакции",
       analytics: "Аналитика",
+      analytics_expenses_calendar_title: "Календарь расходов",
+      analytics_calendar_mode_month: "Месяц",
+      analytics_calendar_this_week: "Эта неделя",
+      analytics_calendar_prev_month: "Предыдущий месяц",
+      analytics_calendar_next_month: "Следующий месяц",
+      analytics_calendar_retry: "Повторить",
+      analytics_calendar_no_day_expenses: "Нет расходов за день",
       profile: "Профиль",
       add_transaction_title: "Добавить транзакцию",
       scope_all: "Общие расходы",
@@ -527,6 +554,13 @@
     home: "Bosh sahifa",
     transactions: "Tranzaksiyalar",
     analytics: "Analitika",
+    analytics_expenses_calendar_title: "Xarajatlar kalendari",
+    analytics_calendar_mode_month: "Oy",
+    analytics_calendar_this_week: "Shu hafta",
+    analytics_calendar_prev_month: "Oldingi oy",
+    analytics_calendar_next_month: "Keyingi oy",
+    analytics_calendar_retry: "Qayta urinish",
+    analytics_calendar_no_day_expenses: "Bu kun uchun xarajat yo'q",
     profile: "Profil",
     add_transaction_title: "Tranzaksiya qo'shish",
     scope_all: "Umumiy xarajatlar",
@@ -623,6 +657,13 @@
     home: "Home",
     transactions: "Transactions",
     analytics: "Analytics",
+    analytics_expenses_calendar_title: "Expenses calendar",
+    analytics_calendar_mode_month: "Month",
+    analytics_calendar_this_week: "This week",
+    analytics_calendar_prev_month: "Previous month",
+    analytics_calendar_next_month: "Next month",
+    analytics_calendar_retry: "Retry",
+    analytics_calendar_no_day_expenses: "No expenses for the day",
     profile: "Profile",
     add_transaction_title: "Add transaction",
     scope_all: "All expenses",
@@ -946,6 +987,536 @@
       end: toDateOnlyIso(prevEnd),
       label: periodComparisonLabel(mode),
     };
+  }
+
+  function startOfMonth(dt) {
+    return new Date(dt.getFullYear(), dt.getMonth(), 1);
+  }
+
+  function endOfMonth(dt) {
+    return new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+  }
+
+  function monthKeyFromDate(dt) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  function parseMonthKey(value) {
+    const raw = String(value || "").trim();
+    const match = /^(\d{4})-(\d{2})$/.exec(raw);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+      return null;
+    }
+    return new Date(year, monthIndex, 1);
+  }
+
+  function stripTime(dt) {
+    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  }
+
+  function compareDateOnly(left, right) {
+    const l = stripTime(left).getTime();
+    const r = stripTime(right).getTime();
+    if (l < r) return -1;
+    if (l > r) return 1;
+    return 0;
+  }
+
+  function isSameDateOnly(left, right) {
+    return compareDateOnly(left, right) === 0;
+  }
+
+  function startOfWeekMonday(dt) {
+    const base = stripTime(dt);
+    const day = base.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    base.setDate(base.getDate() + diff);
+    return base;
+  }
+
+  function calendarWeekdayLabels() {
+    const baseMonday = new Date(2024, 0, 1); // Monday
+    const fmt = new Intl.DateTimeFormat(uiLocale(), { weekday: "short" });
+    return Array.from({ length: 7 }, (_, idx) => {
+      const raw = String(fmt.format(addDays(baseMonday, idx)) || "").replace(/\.$/, "").trim();
+      return raw.toUpperCase();
+    });
+  }
+
+  function capitalizeFirst(text) {
+    const value = String(text || "");
+    if (!value) return value;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function formatMonthYearLabel(dt) {
+    try {
+      const parts = new Intl.DateTimeFormat(uiLocale(), {
+        month: "long",
+        year: "numeric",
+      }).formatToParts(dt);
+      const month = parts.find((part) => part.type === "month");
+      const year = parts.find((part) => part.type === "year");
+      if (month && year) {
+        return `${capitalizeFirst(month.value)} ${year.value}`;
+      }
+    } catch (_err) {
+      // Fallback below.
+    }
+    const raw = String(
+      new Intl.DateTimeFormat(uiLocale(), {
+        month: "long",
+        year: "numeric",
+      }).format(dt) || ""
+    )
+      .replace(/\s?г\.?$/i, "")
+      .trim();
+    return capitalizeFirst(raw);
+  }
+
+  function formatCalendarExpenseAmount(amount) {
+    const value = Math.max(0, Math.round(Number(amount || 0)));
+    if (value === 0) return "0";
+    if (value >= 100000) {
+      return String(
+        new Intl.NumberFormat(uiLocale(), {
+          notation: "compact",
+          compactDisplay: "short",
+          maximumFractionDigits: value >= 1000000 ? 1 : 0,
+        }).format(value)
+      ).replace(/\s+/g, " ");
+    }
+    return new Intl.NumberFormat(uiLocale()).format(value);
+  }
+
+  function analyticsCalendarAvailableScopeOptions() {
+    const allowed = [];
+    (state.scopeOptions || []).forEach((item) => {
+      const key = String((item && item.key) || "");
+      if (!key) return;
+      if (key === "all" || key === "family" || /^user:\d+$/.test(key)) {
+        allowed.push(item);
+      }
+    });
+    return allowed;
+  }
+
+  function analyticsCalendarUserScopeOptions() {
+    return analyticsCalendarAvailableScopeOptions().filter((item) => /^user:\d+$/.test(String(item.key || "")));
+  }
+
+  function analyticsCalendarHasFamilyMode() {
+    return analyticsCalendarUserScopeOptions().length > 1;
+  }
+
+  function analyticsCalendarPreferredPersonalScope() {
+    const users = analyticsCalendarUserScopeOptions();
+    if (!users.length) return "all";
+    const currentKey = `user:${effectiveCurrentUserId() || 0}`;
+    const current = users.find((item) => String(item.key || "") === currentKey);
+    return String((current || users[0] || { key: "all" }).key || "all");
+  }
+
+  function analyticsCalendarNormalizeScope() {
+    const cal = state.analyticsCalendar || {};
+    const options = analyticsCalendarAvailableScopeOptions();
+    if (!analyticsCalendarHasFamilyMode()) {
+      cal.scope = analyticsCalendarPreferredPersonalScope();
+      cal.scopeMenuOpen = false;
+      return;
+    }
+    const keys = new Set(options.map((item) => String(item.key || "")));
+    if (!keys.has(String(cal.scope || ""))) {
+      cal.scope = keys.has("all") ? "all" : (options[0] && options[0].key) || "all";
+    }
+  }
+
+  function analyticsCalendarCurrentScopeKey() {
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return "all";
+    analyticsCalendarNormalizeScope();
+    return String(cal.scope || "all");
+  }
+
+  function analyticsCalendarCurrentScopeLabel() {
+    const scopeKey = analyticsCalendarCurrentScopeKey();
+    const item = analyticsCalendarAvailableScopeOptions().find((row) => String((row && row.key) || "") === scopeKey);
+    return String((item && item.label) || tr("scope_all"));
+  }
+
+  function analyticsCalendarCacheKey(scopeKey, monthKey) {
+    return `${String(scopeKey || "all")}::${String(monthKey || "")}`;
+  }
+
+  function analyticsCalendarVisibleMonthDate() {
+    const cal = state.analyticsCalendar || {};
+    const parsed = parseMonthKey(cal.visibleMonthKey);
+    return parsed || startOfMonth(new Date());
+  }
+
+  function analyticsCalendarIsFutureMonth(monthDate) {
+    const currentMonth = startOfMonth(new Date());
+    return startOfMonth(monthDate).getTime() > currentMonth.getTime();
+  }
+
+  function analyticsCalendarIsCurrentMonth(monthDate) {
+    const currentMonth = startOfMonth(new Date());
+    return startOfMonth(monthDate).getTime() === currentMonth.getTime();
+  }
+
+  function analyticsCalendarVisibleMonthIsCurrentMonth() {
+    return analyticsCalendarIsCurrentMonth(analyticsCalendarVisibleMonthDate());
+  }
+
+  function ensureAnalyticsExpensesCalendarState() {
+    if (!state.analyticsCalendar) return null;
+    const cal = state.analyticsCalendar;
+    if (!cal.visibleMonthKey) {
+      cal.visibleMonthKey = monthKeyFromDate(new Date());
+    }
+    if (!cal.mode) {
+      cal.mode = "month";
+    }
+    if (!cal.scope) {
+      cal.scope = "all";
+    }
+    if (typeof cal.highlightCurrentWeek !== "boolean") {
+      cal.highlightCurrentWeek = true;
+    }
+    if (!cal.cache || typeof cal.cache !== "object") {
+      cal.cache = Object.create(null);
+    }
+    analyticsCalendarNormalizeScope();
+    cal.initialized = true;
+    return cal;
+  }
+
+  function analyticsCalendarBuildDailyExpenseTotals(items) {
+    const totals = Object.create(null);
+    (items || []).forEach((row) => {
+      if (String(row && row.kind || "") !== "expense") return;
+      const dt = parseIsoDateTime(row && row.created_at_iso);
+      if (Number.isNaN(dt.getTime())) return;
+      const key = toDateOnlyIso(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+      totals[key] = Number(totals[key] || 0) + Number(row.amount || 0);
+    });
+    return totals;
+  }
+
+  function analyticsCalendarCurrentCacheEntry() {
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return null;
+    const cacheKey = analyticsCalendarCacheKey(analyticsCalendarCurrentScopeKey(), cal.visibleMonthKey);
+    return (cal.cache && cal.cache[cacheKey]) || null;
+  }
+
+  function analyticsCalendarDayAriaLabel(cell, amountValue, showAmount) {
+    const dateLabel = new Intl.DateTimeFormat(uiLocale(), {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(cell.date);
+    if (!showAmount) return dateLabel;
+    if (Number(amountValue || 0) <= 0) {
+      return `${dateLabel}. ${tr("analytics_calendar_no_day_expenses")}.`;
+    }
+    return `${dateLabel}. ${tr("home_expense")}: ${fmtMoney(amountValue, false)}.`;
+  }
+
+  function analyticsCalendarBuildCells(monthDate, dailyExpenseTotals) {
+    const firstDay = startOfMonth(monthDate);
+    const firstDayWeekday = firstDay.getDay();
+    const leadingDays = firstDayWeekday === 0 ? 6 : firstDayWeekday - 1;
+    const gridStart = addDays(firstDay, -leadingDays);
+    const today = stripTime(new Date());
+    const currentWeekStart = startOfWeekMonday(today);
+    const currentWeekEnd = addDays(currentWeekStart, 6);
+    const cal = ensureAnalyticsExpensesCalendarState();
+    const suppressSumsForMonth = analyticsCalendarIsFutureMonth(monthDate);
+    const cells = [];
+
+    for (let idx = 0; idx < 42; idx += 1) {
+      const date = addDays(gridStart, idx);
+      const iso = toDateOnlyIso(date);
+      const inMonth = date.getMonth() === monthDate.getMonth() && date.getFullYear() === monthDate.getFullYear();
+      const isFuture = compareDateOnly(date, today) > 0;
+      const isToday = isSameDateOnly(date, today);
+      const inCurrentWeek = compareDateOnly(date, currentWeekStart) >= 0 && compareDateOnly(date, currentWeekEnd) <= 0;
+      const showAmount = inMonth && !suppressSumsForMonth && !isFuture;
+      const amountValue = showAmount ? Number((dailyExpenseTotals && dailyExpenseTotals[iso]) || 0) : null;
+      cells.push({
+        date,
+        iso,
+        dayNumber: date.getDate(),
+        inMonth,
+        isFuture,
+        isToday,
+        inCurrentWeek,
+        weekHighlightOn: Boolean(cal && cal.highlightCurrentWeek),
+        showAmount,
+        amountValue,
+      });
+    }
+
+    return cells;
+  }
+
+  function renderAnalyticsCalendarSkeletonGrid() {
+    const cells = Array.from({ length: 42 }, (_, idx) => `
+      <div class="analytics-calendar-cell analytics-calendar-cell-skeleton${idx % 7 >= 5 ? " weekend" : ""}">
+        <span class="analytics-calendar-skeleton-line day"></span>
+        <span class="analytics-calendar-skeleton-line amount"></span>
+      </div>
+    `);
+    return `<div class="analytics-calendar-grid is-skeleton">${cells.join("")}</div>`;
+  }
+
+  function renderAnalyticsCalendarGrid(monthDate, dailyExpenseTotals) {
+    const cells = analyticsCalendarBuildCells(monthDate, dailyExpenseTotals);
+    const html = cells.map((cell, idx) => {
+      const amountValue = Number(cell.amountValue || 0);
+      const canOpen = !cell.isFuture;
+      const cellClasses = [
+        "analytics-calendar-cell",
+        cell.inMonth ? "" : "is-outside",
+        idx % 7 >= 5 ? "weekend" : "",
+        cell.isToday ? "is-today" : "",
+        cell.weekHighlightOn && cell.inCurrentWeek ? "is-current-week" : "",
+        canOpen ? "is-clickable" : "is-disabled",
+      ].filter(Boolean).join(" ");
+      const amountClasses = [
+        "analytics-calendar-day-amount",
+        !cell.showAmount ? "is-empty" : "",
+        cell.showAmount && amountValue <= 0 ? "is-zero" : "",
+        cell.showAmount && amountValue > 0 ? "has-value" : "",
+      ].filter(Boolean).join(" ");
+      const amountText = cell.showAmount ? formatCalendarExpenseAmount(amountValue) : "";
+      const ariaLabel = analyticsCalendarDayAriaLabel(cell, amountValue, cell.showAmount);
+      return `
+        <button
+          type="button"
+          class="${cellClasses}"
+          data-calendar-action="open-day"
+          data-date="${cell.iso}"
+          aria-label="${escapeHtml(ariaLabel)}"
+          ${canOpen ? "" : "disabled"}
+        >
+          <span class="analytics-calendar-day-number">${cell.dayNumber}</span>
+          <span class="${amountClasses}">${escapeHtml(amountText)}</span>
+        </button>
+      `;
+    }).join("");
+    return `<div class="analytics-calendar-grid">${html}</div>`;
+  }
+
+  function renderAnalyticsExpensesCalendar() {
+    if (!els.analyticsExpensesCalendar) return;
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return;
+
+    const monthDate = analyticsCalendarVisibleMonthDate();
+    const monthLabel = formatMonthYearLabel(monthDate);
+    const weekdayLabels = calendarWeekdayLabels();
+    const hasFamilyFilter = analyticsCalendarHasFamilyMode();
+    const scopeLabel = analyticsCalendarCurrentScopeLabel();
+    const cacheEntry = analyticsCalendarCurrentCacheEntry();
+    const futureMonth = analyticsCalendarIsFutureMonth(monthDate);
+    const showSkeleton = Boolean(cal.loading && !cacheEntry && !futureMonth);
+    const showError = Boolean(cal.error && !cacheEntry && !futureMonth);
+    const scopeOptions = hasFamilyFilter ? analyticsCalendarAvailableScopeOptions() : [];
+
+    let bodyHtml = "";
+    if (showError) {
+      bodyHtml = `
+        <div class="empty-wrap analytics-calendar-empty">
+          <div class="empty">${escapeHtml(cal.error || tr("empty_transactions_error"))}</div>
+          <button type="button" class="empty-action-btn" data-calendar-action="retry">${escapeHtml(tr("analytics_calendar_retry"))}</button>
+        </div>
+      `;
+    } else {
+      bodyHtml = `
+        <div class="analytics-calendar-weekdays">
+          ${weekdayLabels.map((label, idx) => `<span class="analytics-calendar-weekday${idx >= 5 ? " weekend" : ""}">${escapeHtml(label)}</span>`).join("")}
+        </div>
+        ${showSkeleton
+          ? renderAnalyticsCalendarSkeletonGrid()
+          : renderAnalyticsCalendarGrid(monthDate, cacheEntry && cacheEntry.dailyExpenseTotals)}
+      `;
+    }
+
+    els.analyticsExpensesCalendar.innerHTML = `
+      <div class="analytics-calendar-toolbar">
+        <div class="analytics-calendar-toolbar-row">
+          <div class="analytics-calendar-mode">
+            <button type="button" class="seg-btn active" aria-pressed="true" disabled>${escapeHtml(tr("analytics_calendar_mode_month"))}</button>
+          </div>
+          <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
+            <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
+              ${lucideSvg("chevron-left", { width: 16, height: 16 })}
+            </button>
+            <div class="analytics-calendar-month-label">${escapeHtml(monthLabel)}</div>
+            <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="next-month" aria-label="${escapeHtml(tr("analytics_calendar_next_month"))}">
+              ${lucideSvg("chevron-right", { width: 16, height: 16 })}
+            </button>
+          </div>
+        </div>
+        <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary${hasFamilyFilter ? " has-scope" : ""}">
+          ${hasFamilyFilter ? `
+            <div class="scope-wrap analytics-calendar-scope">
+              <button type="button" class="scope-btn analytics-calendar-scope-btn" data-calendar-action="toggle-scope-menu" aria-expanded="${cal.scopeMenuOpen ? "true" : "false"}">
+                ${lucideSvg("users", { width: 14, height: 14 })}
+                <span class="analytics-calendar-scope-label">${escapeHtml(scopeLabel)}</span>
+                <span class="chev">${lucideSvg("chevron-down", { width: 14, height: 14 })}</span>
+              </button>
+              <div class="scope-menu analytics-calendar-scope-menu${cal.scopeMenuOpen ? "" : " hidden"}">
+                ${scopeOptions.map((item) => `
+                  <button
+                    type="button"
+                    class="scope-option${String(item.key || "") === analyticsCalendarCurrentScopeKey() ? " active" : ""}"
+                    data-calendar-action="select-scope"
+                    data-scope="${escapeHtml(String(item.key || ""))}"
+                  >${escapeHtml(String(item.label || ""))}</button>
+                `).join("")}
+              </div>
+            </div>
+          ` : `<div class="analytics-calendar-toolbar-spacer"></div>`}
+          <button type="button" class="analytics-calendar-week-toggle${cal.highlightCurrentWeek ? " active" : ""}" data-calendar-action="toggle-week" aria-pressed="${cal.highlightCurrentWeek ? "true" : "false"}">
+            ${lucideSvg("calendar-range", { width: 14, height: 14 })}
+            <span>${escapeHtml(tr("analytics_calendar_this_week"))}</span>
+          </button>
+        </div>
+      </div>
+      <div class="analytics-calendar-body${showSkeleton ? " is-loading" : ""}">
+        ${bodyHtml}
+      </div>
+    `;
+  }
+
+  async function loadAnalyticsExpensesCalendarVisibleMonth(options) {
+    if (!els.analyticsExpensesCalendar) return;
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return;
+
+    analyticsCalendarNormalizeScope();
+    const monthDate = analyticsCalendarVisibleMonthDate();
+    const monthKey = cal.visibleMonthKey || monthKeyFromDate(monthDate);
+    cal.visibleMonthKey = monthKey;
+    const scopeKey = analyticsCalendarCurrentScopeKey();
+
+    if (analyticsCalendarIsFutureMonth(monthDate)) {
+      cal.loading = false;
+      cal.error = "";
+      renderAnalyticsExpensesCalendar();
+      return;
+    }
+
+    const cacheKey = analyticsCalendarCacheKey(scopeKey, monthKey);
+    const force = Boolean(options && options.force);
+    if (!force && cal.cache && cal.cache[cacheKey]) {
+      cal.loading = false;
+      cal.error = "";
+      renderAnalyticsExpensesCalendar();
+      return;
+    }
+
+    cal.loading = true;
+    cal.error = "";
+    renderAnalyticsExpensesCalendar();
+
+    const startIso = toDateOnlyIso(startOfMonth(monthDate));
+    const endIso = toDateOnlyIso(endOfMonth(monthDate));
+    const requestId = ++cal.requestId;
+
+    try {
+      const items = await fetchTransactionsItems({
+        scope: scopeKey,
+        period: "custom",
+        start: startIso,
+        end: endIso,
+      });
+      if (!state.analyticsCalendar || requestId !== state.analyticsCalendar.requestId) return;
+      state.analyticsCalendar.cache[cacheKey] = {
+        dailyExpenseTotals: analyticsCalendarBuildDailyExpenseTotals(items),
+        updatedAt: Date.now(),
+      };
+      state.analyticsCalendar.loading = false;
+      state.analyticsCalendar.error = "";
+      renderAnalyticsExpensesCalendar();
+    } catch (err) {
+      if (!state.analyticsCalendar || requestId !== state.analyticsCalendar.requestId) return;
+      state.analyticsCalendar.loading = false;
+      state.analyticsCalendar.error = tr("empty_transactions_error");
+      renderAnalyticsExpensesCalendar();
+      console.error("analytics expenses calendar load failed", err);
+    }
+  }
+
+  async function shiftAnalyticsExpensesCalendarMonth(offset) {
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return;
+    const monthDate = analyticsCalendarVisibleMonthDate();
+    const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + Number(offset || 0), 1);
+    cal.visibleMonthKey = monthKeyFromDate(nextMonth);
+    cal.scopeMenuOpen = false;
+    cal.error = "";
+    renderAnalyticsExpensesCalendar();
+    await loadAnalyticsExpensesCalendarVisibleMonth();
+  }
+
+  async function setAnalyticsExpensesCalendarScope(scopeKey) {
+    const cal = ensureAnalyticsExpensesCalendarState();
+    if (!cal) return;
+    const nextScope = String(scopeKey || "").trim();
+    if (!nextScope) return;
+    const allowed = new Set(analyticsCalendarAvailableScopeOptions().map((item) => String(item.key || "")));
+    if (!allowed.has(nextScope)) return;
+    const changed = String(cal.scope || "") !== nextScope;
+    cal.scope = nextScope;
+    cal.scopeMenuOpen = false;
+    cal.error = "";
+    renderAnalyticsExpensesCalendar();
+    if (changed) {
+      await loadAnalyticsExpensesCalendarVisibleMonth();
+    }
+  }
+
+  async function openTransactionsForAnalyticsCalendarDay(dayIso) {
+    const targetDate = parseDateOnly(dayIso);
+    if (!targetDate) return;
+    const today = stripTime(new Date());
+    if (compareDateOnly(targetDate, today) > 0) return;
+
+    if (state.screen === "analytics") {
+      state.analyticsPage.returnContext = {
+        period: state.period,
+        start: state.start,
+        end: state.end,
+        scope: state.scope,
+      };
+    }
+
+    const nextScope = analyticsCalendarCurrentScopeKey();
+    const scopeItem = (state.scopeOptions || []).find((item) => String((item && item.key) || "") === nextScope);
+
+    state.transactionsTypeFilter = "expense";
+    state.period = "custom";
+    state.start = dayIso;
+    state.end = dayIso;
+    updatePeriodLabel();
+
+    els.screenTitle.textContent = tr("transactions");
+    els.navAdd.classList.remove("hidden");
+    showScreen("transactions");
+    state.scope = nextScope;
+    if (scopeItem && els.scopeLabel) {
+      els.scopeLabel.textContent = String(scopeItem.label || tr("scope_all"));
+    }
+    await loadTransactions();
   }
 
   function normalizeCategoryKey(label) {
@@ -1717,11 +2288,12 @@
     setNodeText(els.placeholderTitle, tr("placeholder_soon"));
     setNodeText(document.querySelector("#placeholderScreen p"), tr("placeholder_text"));
     setNodeText(document.querySelector("#transactionsScreen .panel-head h2"), tr("transactions"));
-    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(2) .panel-head h2"), lang === "ru" ? "Динамика расходов и доходов" : (lang === "uz" ? "Xarajat va daromad dinamikasi" : "Expense and income trend"));
-    setNodeText(document.querySelector("#analyticsComparisonSection .panel-head h2"), lang === "ru" ? "Сравнение периодов" : (lang === "uz" ? "Davrlarni solishtirish" : "Period comparison"));
-    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(4) .panel-head h2"), lang === "ru" ? "Категории расходов" : (lang === "uz" ? "Xarajat kategoriyalari" : "Expense categories"));
-    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(5) .panel-head h2"), lang === "ru" ? "Семейная аналитика" : (lang === "uz" ? "Oilaviy analitika" : "Family analytics"));
-    setNodeText(document.querySelector("#analyticsScreen section:nth-of-type(6) .panel-head h2"), lang === "ru" ? "Инсайты" : (lang === "uz" ? "Insightlar" : "Insights"));
+    setNodeText(els.analyticsExpensesCalendarTitle, tr("analytics_expenses_calendar_title"));
+    setNodeText(els.analyticsTrendTitle, lang === "ru" ? "Динамика расходов и доходов" : (lang === "uz" ? "Xarajat va daromad dinamikasi" : "Expense and income trend"));
+    setNodeText(els.analyticsComparisonTitle, lang === "ru" ? "Сравнение периодов" : (lang === "uz" ? "Davrlarni solishtirish" : "Period comparison"));
+    setNodeText(els.analyticsCategoriesTitle, lang === "ru" ? "Категории расходов" : (lang === "uz" ? "Xarajat kategoriyalari" : "Expense categories"));
+    setNodeText(els.analyticsFamilyTitle, lang === "ru" ? "Семейная аналитика" : (lang === "uz" ? "Oilaviy analitika" : "Family analytics"));
+    setNodeText(els.analyticsInsightsTitle, lang === "ru" ? "Инсайты" : (lang === "uz" ? "Insightlar" : "Insights"));
 
     setNodeText(els.navHome && els.navHome.querySelector(".txt"), tr("home"));
     setNodeText(els.navTransactions && els.navTransactions.querySelector(".txt"), tr("transactions"));
@@ -1746,6 +2318,7 @@
     setNodeText(els.closeCategorySheetBtn, tr("close"));
 
     updatePeriodLabel();
+    renderAnalyticsExpensesCalendar();
   }
 
   function updateProfileSectionMeta() {
@@ -2936,6 +3509,7 @@
   function renderTransactions(items) {
     els.transactionsList.innerHTML = "";
     const typeFilter = state.transactionsTypeFilter || "all";
+    const isSingleDayPeriod = state.period === "custom" && !!state.start && !!state.end && String(state.start) === String(state.end);
     const filtered = (items || []).filter((item) => {
       if (typeFilter === "all") return true;
       return String(item.kind || "") === typeFilter;
@@ -2948,7 +3522,7 @@
         typeFilter === "income"
           ? (currentLanguageCode() === "ru" ? "Нет доходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun daromadlar yo'q." : "No income for the selected period.")
           : typeFilter === "expense"
-            ? (currentLanguageCode() === "ru" ? "Нет расходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun xarajatlar yo'q." : "No expenses for the selected period.")
+            ? (isSingleDayPeriod ? tr("analytics_calendar_no_day_expenses") : (currentLanguageCode() === "ru" ? "Нет расходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun xarajatlar yo'q." : "No expenses for the selected period."))
             : (currentLanguageCode() === "ru" ? "Нет транзакций за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun tranzaksiyalar yo'q." : "No transactions for the selected period.");
       els.transactionsList.appendChild(empty);
       return;
@@ -3376,6 +3950,16 @@
     if (els.analyticsTopCategories) els.analyticsTopCategories.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsParticipants) els.analyticsParticipants.innerHTML = analyticsEmptyHtml(message);
     if (els.analyticsInsights) els.analyticsInsights.innerHTML = analyticsEmptyHtml(message);
+    if (els.analyticsExpensesCalendar) {
+      const cal = ensureAnalyticsExpensesCalendarState();
+      if (cal) {
+        cal.loading = false;
+        if (!analyticsCalendarCurrentCacheEntry()) {
+          cal.error = String(message || tr("empty_analytics_error"));
+        }
+        renderAnalyticsExpensesCalendar();
+      }
+    }
   }
 
   function renderAnalyticsPage(report) {
@@ -3567,6 +4151,10 @@
     try {
       const overviewPayload = await fetchOverviewPayload({ scope: "all" });
       const { periodObj } = applyOverviewMeta(overviewPayload);
+      ensureAnalyticsExpensesCalendarState();
+      void loadAnalyticsExpensesCalendarVisibleMonth({
+        force: analyticsCalendarVisibleMonthIsCurrentMonth(),
+      });
 
       const currentItems = await fetchTransactionsItems({
         scope: "all",
@@ -3619,6 +4207,14 @@
         "error"
       );
       renderAnalyticsPageEmpty(tr("empty_analytics_error"));
+      if (els.analyticsExpensesCalendar && !analyticsCalendarCurrentCacheEntry()) {
+        const cal = ensureAnalyticsExpensesCalendarState();
+        if (cal) {
+          cal.loading = false;
+          cal.error = tr("empty_analytics_error");
+          renderAnalyticsExpensesCalendar();
+        }
+      }
       console.error("analytics load failed", err);
       return;
     } finally {
@@ -3629,10 +4225,27 @@
   async function openAnalyticsScreen() {
     els.screenTitle.textContent = tr("analytics");
     els.navAdd.classList.remove("hidden");
+    if (state.analyticsPage && state.analyticsPage.returnContext) {
+      const ctx = state.analyticsPage.returnContext || {};
+      state.period = ctx.period || state.period;
+      state.start = ctx.start || null;
+      state.end = ctx.end || null;
+      if (ctx.scope) {
+        state.scope = ctx.scope;
+        const restoredScopeItem = (state.scopeOptions || []).find((item) => String((item && item.key) || "") === String(ctx.scope));
+        if (restoredScopeItem && els.scopeLabel) {
+          els.scopeLabel.textContent = String(restoredScopeItem.label || tr("scope_all"));
+        }
+      }
+      state.analyticsPage.returnContext = null;
+      updatePeriodLabel();
+    }
     if (state.screen !== "analytics" && !state.analyticsPage.scopeBeforeOpen) {
       state.analyticsPage.scopeBeforeOpen = state.scope;
     }
     showScreen("analytics");
+    ensureAnalyticsExpensesCalendarState();
+    renderAnalyticsExpensesCalendar();
     if (!state.analyticsPage.initialized) {
       state.analyticsPage.initialized = true;
       state.period = "month";
@@ -3728,6 +4341,61 @@
       }
     });
     document.addEventListener("click", () => closeScopeMenu());
+    document.addEventListener("click", () => {
+      if (!state.analyticsCalendar || !state.analyticsCalendar.scopeMenuOpen) return;
+      state.analyticsCalendar.scopeMenuOpen = false;
+      renderAnalyticsExpensesCalendar();
+    });
+
+    if (els.analyticsExpensesCalendar) {
+      els.analyticsExpensesCalendar.addEventListener("click", (e) => {
+        const target = e.target && e.target.closest ? e.target.closest("[data-calendar-action]") : null;
+        if (!target || !els.analyticsExpensesCalendar.contains(target)) return;
+        const action = String(target.dataset.calendarAction || "");
+
+        if (action === "toggle-scope-menu" || action === "select-scope") {
+          e.stopPropagation();
+        }
+
+        if (action === "prev-month") {
+          void shiftAnalyticsExpensesCalendarMonth(-1);
+          return;
+        }
+        if (action === "next-month") {
+          void shiftAnalyticsExpensesCalendarMonth(1);
+          return;
+        }
+        if (action === "toggle-week") {
+          const cal = ensureAnalyticsExpensesCalendarState();
+          if (!cal) return;
+          cal.highlightCurrentWeek = !cal.highlightCurrentWeek;
+          renderAnalyticsExpensesCalendar();
+          return;
+        }
+        if (action === "toggle-scope-menu") {
+          const cal = ensureAnalyticsExpensesCalendarState();
+          if (!cal || !analyticsCalendarHasFamilyMode()) return;
+          cal.scopeMenuOpen = !cal.scopeMenuOpen;
+          renderAnalyticsExpensesCalendar();
+          return;
+        }
+        if (action === "select-scope") {
+          const nextScope = String(target.dataset.scope || "").trim();
+          if (!nextScope) return;
+          void setAnalyticsExpensesCalendarScope(nextScope);
+          return;
+        }
+        if (action === "retry") {
+          void loadAnalyticsExpensesCalendarVisibleMonth({ force: true });
+          return;
+        }
+        if (action === "open-day") {
+          const dayIso = String(target.dataset.date || "").trim();
+          if (!dayIso) return;
+          void openTransactionsForAnalyticsCalendarDay(dayIso);
+        }
+      });
+    }
 
     els.openDatePanelBtn.addEventListener("click", openDateSheet);
     els.periodBadgeBtn.addEventListener("click", openDateSheet);
