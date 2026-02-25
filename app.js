@@ -175,6 +175,10 @@
     applyCustomPeriodBtn: document.getElementById("applyCustomPeriodBtn"),
     customStartDate: document.getElementById("customStartDate"),
     customEndDate: document.getElementById("customEndDate"),
+    scopeSheet: document.getElementById("scopeSheet"),
+    scopeSheetTitle: document.getElementById("scopeSheetTitle"),
+    scopeSheetList: document.getElementById("scopeSheetList"),
+    closeScopeSheetBtn: document.getElementById("closeScopeSheetBtn"),
     tabIncome: document.getElementById("tabIncome"),
     tabExpense: document.getElementById("tabExpense"),
     incomeValue: document.getElementById("incomeValue"),
@@ -844,12 +848,33 @@
     return 0;
   }
 
+  function selectedScopeOption() {
+    const current = String(state.scope || "all");
+    return (state.scopeOptions || []).find((item) => String((item && item.key) || "") === current) || null;
+  }
+
+  function selectedScopeLabel() {
+    const option = selectedScopeOption();
+    if (option && option.label) return String(option.label);
+    if (String(state.scope || "") === "family") return tr("scope_family");
+    return tr("scope_all");
+  }
+
+  function syncHomeTopbarPeriodButton() {
+    if (!els.scopeLabel) return;
+    if (state.screen !== "home") return;
+    const periodText = els.periodLabel ? String(els.periodLabel.textContent || tr("today")) : (tr(state.period) || tr("today"));
+    els.scopeLabel.textContent = periodText;
+  }
+
   function updatePeriodLabel() {
     if (state.period === "custom" && state.start && state.end) {
       els.periodLabel.textContent = `${formatDateLabel(state.start)} - ${formatDateLabel(state.end)}`;
+      syncHomeTopbarPeriodButton();
       return;
     }
     els.periodLabel.textContent = tr(state.period) || tr("today");
+    syncHomeTopbarPeriodButton();
   }
 
   function setStatusBanner(text, kind) {
@@ -1075,6 +1100,7 @@
 
   function headerTitleForScreen(name) {
     const screen = String(name || state.screen || "").trim();
+    if (screen === "home") return selectedScopeLabel();
     if (screen === "transactions") return tr("transactions");
     if (screen === "analytics") {
       return currentLanguageCode() === "ru"
@@ -1115,6 +1141,7 @@
       els.openDatePanelBtn.innerHTML = `<i data-lucide="${escapeHtml(iconName)}"></i>`;
     }
 
+    const isHome = state.screen === "home";
     const isProfile = state.screen === "profile";
     const isProfileDetail = state.screen === "profile-detail";
     const isAdd = state.screen === "add";
@@ -1125,7 +1152,33 @@
         ? (currentLanguageCode() === "ru" ? "Фильтр даты" : currentLanguageCode() === "uz" ? "Sana filtri" : "Date filter")
         : (currentLanguageCode() === "ru" ? "Раздел" : currentLanguageCode() === "uz" ? "Bo'lim" : "Section")
     );
-    els.openDatePanelBtn.disabled = Boolean(isAdd);
+    els.openDatePanelBtn.disabled = Boolean(isAdd || isHome);
+
+    if (els.screenTitle) {
+      els.screenTitle.classList.toggle("home-scope-trigger", isHome);
+      if (isHome) {
+        els.screenTitle.setAttribute("role", "button");
+        els.screenTitle.setAttribute("tabindex", "0");
+        if (els.scopeSheet) {
+          els.screenTitle.setAttribute("aria-expanded", String(!els.scopeSheet.classList.contains("hidden")));
+        }
+      } else {
+        els.screenTitle.removeAttribute("role");
+        els.screenTitle.removeAttribute("tabindex");
+        els.screenTitle.removeAttribute("aria-expanded");
+      }
+    }
+
+    if (els.openScopeBtn) {
+      els.openScopeBtn.classList.toggle("home-date-trigger", isHome);
+      if (isHome) {
+        els.openScopeBtn.setAttribute(
+          "aria-label",
+          currentLanguageCode() === "ru" ? "Фильтр даты" : currentLanguageCode() === "uz" ? "Sana filtri" : "Date filter"
+        );
+      }
+    }
+    syncHomeTopbarPeriodButton();
 
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
@@ -2668,6 +2721,8 @@
     }
 
     setNodeText(document.querySelector("#dateSheet h3"), tr("date_range_title"));
+    setNodeText(els.scopeSheetTitle, currentLanguageCode() === "ru" ? "Выберите режим" : (currentLanguageCode() === "uz" ? "Ko'rinishni tanlang" : "Choose view"));
+    setNodeText(els.closeScopeSheetBtn, tr("close"));
     const quickBtns = Array.from(document.querySelectorAll("#dateSheet .quick-btn"));
     quickBtns.forEach((btn) => {
       const key = String(btn.dataset.period || "");
@@ -3190,8 +3245,13 @@
 
     if (isAddScreen || isAnalyticsScreen || isProfileScreen || isProfileDetailScreen) {
       closeScopeMenu();
+      closeScopeSheet();
       closeDateSheet();
       setStatusBanner("", "info");
+    }
+
+    if (!isHomeScreen) {
+      closeScopeSheet();
     }
 
     renderScreenChromeVisuals();
@@ -3252,6 +3312,40 @@
     });
   }
 
+  function renderScopeSheetOptions() {
+    if (!els.scopeSheetList) return;
+    const selected = String(state.scope || "all");
+    const options = Array.isArray(state.scopeOptions) ? state.scopeOptions : [];
+    els.scopeSheetList.innerHTML = "";
+    if (!options.length) {
+      const empty = document.createElement("div");
+      empty.className = "scope-sheet-empty";
+      empty.textContent = tr("scope_no_options");
+      els.scopeSheetList.appendChild(empty);
+      return;
+    }
+    options.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "scope-sheet-option" + (String(item.key || "") === selected ? " active" : "");
+      btn.innerHTML = `
+        <span class="scope-sheet-option-label">${escapeHtml(String(item.label || ""))}</span>
+        <span class="scope-sheet-option-check">${String(item.key || "") === selected ? lucideSvg("check", { width: 16, height: 16 }) : ""}</span>
+      `;
+      btn.addEventListener("click", async () => {
+        if (state.isLoading) return;
+        state.scope = String(item.key || "all");
+        closeScopeSheet();
+        renderScreenChromeVisuals();
+        await reloadDataForCurrentScreen();
+      });
+      els.scopeSheetList.appendChild(btn);
+    });
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
   function openScopeMenu() {
     renderScopeMenu();
     if (els.appRoot) {
@@ -3267,7 +3361,36 @@
     }
   }
 
+  function openScopeSheet() {
+    if (!els.scopeSheet) return;
+    if (els.scopeSheetTitle) {
+      els.scopeSheetTitle.textContent =
+        currentLanguageCode() === "ru"
+          ? "Выберите режим"
+          : currentLanguageCode() === "uz"
+            ? "Ko'rinishni tanlang"
+            : "Choose view";
+    }
+    renderScopeSheetOptions();
+    els.scopeSheet.classList.remove("hidden");
+    if (els.appRoot) {
+      els.appRoot.classList.add("scope-sheet-open");
+    }
+    renderScreenChromeVisuals();
+  }
+
+  function closeScopeSheet() {
+    if (!els.scopeSheet) return;
+    els.scopeSheet.classList.add("hidden");
+    if (els.appRoot) {
+      els.appRoot.classList.remove("scope-sheet-open");
+    }
+    renderScreenChromeVisuals();
+  }
+
   function openDateSheet() {
+    closeScopeMenu();
+    closeScopeSheet();
     els.customStartDate.value = state.start || "";
     els.customEndDate.value = state.end || "";
     document.querySelectorAll(".quick-btn").forEach((btn) => {
@@ -4452,7 +4575,11 @@
     }
     state.isLoading = true;
     try {
-      const payload = await fetchJsonWithFallback("transactions", { include_transfers: true });
+      const scopeForRequest = state.transactionsTypeFilter === "transfer" ? "all" : state.scope;
+      const payload = await fetchJsonWithFallback("transactions", {
+        include_transfers: true,
+        scope: scopeForRequest,
+      });
       state.apiUnavailable = false;
       const items = Array.isArray(payload && payload.items) ? payload.items : [];
       state.currentTransactions = items;
@@ -4760,12 +4887,37 @@
     els.openScopeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (state.isLoading) return;
+      if (state.screen === "home") {
+        closeScopeMenu();
+        openDateSheet();
+        return;
+      }
       if (els.scopeMenu.classList.contains("hidden")) {
         openScopeMenu();
       } else {
         closeScopeMenu();
       }
     });
+    if (els.screenTitle) {
+      const onHomeScopeTrigger = (event) => {
+        if (state.screen !== "home") return;
+        if (event && typeof event.preventDefault === "function") event.preventDefault();
+        if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+        if (state.isLoading) return;
+        if (els.scopeSheet && !els.scopeSheet.classList.contains("hidden")) {
+          closeScopeSheet();
+        } else {
+          closeDateSheet();
+          openScopeSheet();
+        }
+      };
+      els.screenTitle.addEventListener("click", onHomeScopeTrigger);
+      els.screenTitle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onHomeScopeTrigger(e);
+        }
+      });
+    }
     document.addEventListener("click", () => closeScopeMenu());
     document.addEventListener("click", () => {
       if (!state.analyticsCalendar || !state.analyticsCalendar.scopeMenuOpen) return;
@@ -4825,6 +4977,14 @@
     els.dateSheet.addEventListener("click", (e) => {
       if (e.target === els.dateSheet) closeDateSheet();
     });
+    if (els.closeScopeSheetBtn) {
+      els.closeScopeSheetBtn.addEventListener("click", closeScopeSheet);
+    }
+    if (els.scopeSheet) {
+      els.scopeSheet.addEventListener("click", (e) => {
+        if (e.target === els.scopeSheet) closeScopeSheet();
+      });
+    }
 
     document.querySelectorAll(".quick-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -4874,9 +5034,15 @@
 
     if (els.transactionsFilters) {
       Array.from(els.transactionsFilters.querySelectorAll("[data-tx-filter]")).forEach((btn) => {
-        btn.addEventListener("click", () => {
-          state.transactionsTypeFilter = String(btn.dataset.txFilter || "all");
+        btn.addEventListener("click", async () => {
+          const prev = String(state.transactionsTypeFilter || "all");
+          const next = String(btn.dataset.txFilter || "all");
+          state.transactionsTypeFilter = next;
           renderTransactionsFilterButtons();
+          if (prev === "transfer" || next === "transfer") {
+            await loadTransactions();
+            return;
+          }
           renderTransactions(state.currentTransactions || []);
         });
       });
