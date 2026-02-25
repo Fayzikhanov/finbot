@@ -2298,18 +2298,23 @@ textarea {
 .analytics-expenses-calendar {
   margin-top: 10px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .analytics-calendar-toolbar {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .analytics-calendar-toolbar-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.analytics-calendar-toolbar-row-main {
+  flex-wrap: wrap;
 }
 
 .analytics-calendar-toolbar-row-secondary {
@@ -2321,6 +2326,10 @@ textarea {
   justify-content: space-between;
 }
 
+.analytics-calendar-toolbar-row-scope {
+  justify-content: flex-end;
+}
+
 .analytics-calendar-toolbar-spacer {
   flex: 1 1 auto;
   min-width: 0;
@@ -2330,9 +2339,8 @@ textarea {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 40px;
   align-items: center;
-  gap: 8px;
-  flex: 1 1 auto;
-  width: 100%;
+  gap: 6px;
+  flex: 1 1 180px;
   min-width: 0;
 }
 
@@ -2368,7 +2376,7 @@ textarea {
 
 .analytics-calendar-nav-btn:active,
 .analytics-calendar-nav-btn:hover {
-  background: #f4f5f9;
+  background: #f5f6fa;
 }
 
 .analytics-calendar-nav-btn:active {
@@ -2386,6 +2394,11 @@ textarea {
 .analytics-calendar-scope {
   flex: 1 1 180px;
   min-width: 0;
+}
+
+.analytics-calendar-toolbar-row-scope .analytics-calendar-scope {
+  flex: 0 1 260px;
+  width: min(100%, 260px);
 }
 
 .analytics-calendar-scope-btn {
@@ -2420,19 +2433,22 @@ textarea {
   border-radius: 12px;
   background: #fff;
   color: var(--text-secondary);
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  line-height: 1;
+  margin-left: auto;
 }
 
 .analytics-calendar-week-toggle svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
+  opacity: 0.88;
 }
 
 .analytics-calendar-chip-icon-fallback {
@@ -2441,18 +2457,18 @@ textarea {
 }
 
 .analytics-calendar-week-toggle.active {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-  box-shadow: 0 4px 10px rgba(108, 92, 231, 0.18);
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--primary);
+  border-color: rgba(108, 92, 231, 0.26);
+  box-shadow: none;
 }
 
 .analytics-calendar-week-toggle:hover {
-  background: #f4f5f9;
+  background: #f5f6fa;
 }
 
 .analytics-calendar-week-toggle.active:hover {
-  background: #6252de;
+  background: rgba(108, 92, 231, 0.14);
 }
 
 .analytics-calendar-week-toggle:active {
@@ -2461,13 +2477,13 @@ textarea {
 
 .analytics-calendar-body {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .analytics-calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
 }
 
 .analytics-calendar-weekday {
@@ -2486,11 +2502,11 @@ textarea {
 
 .analytics-calendar-grid {
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .analytics-calendar-row {
-  --analytics-calendar-gap: 4px;
+  --analytics-calendar-gap: 3px;
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -2500,13 +2516,13 @@ textarea {
 .analytics-calendar-row.has-current-week::before {
   content: "";
   position: absolute;
-  top: 1px;
-  bottom: 1px;
+  top: 2px;
+  bottom: 2px;
   left: calc((var(--week-start-col) - 1) * (((100% - (6 * var(--analytics-calendar-gap))) / 7) + var(--analytics-calendar-gap)));
   right: calc((7 - var(--week-end-col)) * (((100% - (6 * var(--analytics-calendar-gap))) / 7) + var(--analytics-calendar-gap)));
-  border-radius: 14px;
-  border: 1px solid rgba(108, 92, 231, 0.22);
-  background: rgba(108, 92, 231, 0.12);
+  border-radius: 12px;
+  border: 0;
+  background: rgba(108, 92, 231, 0.07);
   pointer-events: none;
   z-index: 0;
 }
@@ -2516,7 +2532,7 @@ textarea {
   z-index: 1;
   border: 1px solid transparent;
   border-radius: 12px;
-  background: transparent;
+  background: rgba(28, 28, 30, 0.02);
   min-height: 58px;
   padding: 6px 3px 5px;
   display: flex;
@@ -2534,11 +2550,11 @@ textarea {
 }
 
 .analytics-calendar-cell.is-clickable:hover {
-  background: rgba(28, 28, 30, 0.03);
+  background: rgba(28, 28, 30, 0.045);
 }
 
 .analytics-calendar-cell.is-clickable:active {
-  background: rgba(108, 92, 231, 0.09);
+  background: rgba(108, 92, 231, 0.08);
   transform: translateY(1px);
 }
 
@@ -2551,17 +2567,18 @@ textarea {
 }
 
 .analytics-calendar-cell.is-outside {
+  background: rgba(28, 28, 30, 0.01);
   color: #a8afbd;
 }
 
 .analytics-calendar-cell.is-current-week {
-  background: rgba(108, 92, 231, 0.045);
+  background: rgba(108, 92, 231, 0.03);
 }
 
 .analytics-calendar-cell.is-today {
-  background: #fff;
-  border-color: rgba(108, 92, 231, 0.9);
-  box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.12), 0 4px 10px rgba(108, 92, 231, 0.08);
+  background: rgba(108, 92, 231, 0.07);
+  border-color: rgba(108, 92, 231, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(108, 92, 231, 0.12);
 }
 
 .analytics-calendar-cell.is-outside.is-current-week {
@@ -2597,8 +2614,8 @@ textarea {
 
 .analytics-calendar-cell.is-today .analytics-calendar-day-number::after {
   content: "";
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 999px;
   background: var(--primary);
   display: inline-block;
@@ -2626,8 +2643,8 @@ textarea {
 }
 
 .analytics-calendar-day-amount.is-zero {
-  color: #a0a7b5;
-  font-weight: 600;
+  color: rgba(107, 114, 128, 0.58);
+  font-weight: 500;
 }
 
 .analytics-calendar-day-amount.is-empty {
@@ -2655,7 +2672,7 @@ textarea {
 }
 
 .analytics-calendar-grid.is-skeleton {
-  gap: 4px;
+  gap: 3px;
 }
 
 .analytics-calendar-row-skeleton::before {
@@ -2746,8 +2763,8 @@ textarea {
   }
 
   .analytics-calendar-week-toggle {
-    min-height: 34px;
-    padding: 0 10px;
+    min-height: 30px;
+    padding: 0 9px;
     font-size: 12px;
   }
 
@@ -2769,6 +2786,22 @@ textarea {
 
   .analytics-calendar-day-amount {
     font-size: 9px;
+  }
+
+  .analytics-calendar-toolbar-row-main {
+    gap: 6px;
+  }
+
+  .analytics-calendar-weekdays {
+    gap: 2px;
+  }
+
+  .analytics-calendar-grid {
+    gap: 2px;
+  }
+
+  .analytics-calendar-row {
+    --analytics-calendar-gap: 2px;
   }
 
   .analytics-diff-row {
