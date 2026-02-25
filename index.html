@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Семейные финансы</title>
-    <link rel="stylesheet" href="./styles.css?v=9" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <div id="app" class="app">
@@ -57,7 +57,7 @@
             </div>
 
             <div class="home-hero-substats">
-              <div class="home-hero-substat">
+              <div id="homeHeroIncomeSubstat" class="home-hero-substat">
                 <div class="card-title">Доходы</div>
                 <div id="incomeValue" class="home-hero-subvalue">0 сум</div>
               </div>
@@ -604,6 +604,17 @@
       </div>
     </div>
 
+    <div id="scopeSheet" class="sheet scope-sheet hidden">
+      <div class="sheet-card scope-sheet-card">
+        <div class="scope-sheet-handle" aria-hidden="true"></div>
+        <h3 id="scopeSheetTitle">Выберите режим</h3>
+        <div id="scopeSheetList" class="scope-sheet-list"></div>
+        <div class="sheet-actions">
+          <button id="closeScopeSheetBtn" class="ghost-btn" type="button">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
     <div id="categorySheet" class="sheet hidden">
       <div class="sheet-card">
         <h3>Выберите категорию</h3>
@@ -619,6 +630,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="./utils/analytics.js?v=7"></script>
-    <script src="./app.js?v=9"></script>
+    <script src="./app.js?v=10"></script>
   </body>
 </html>
