@@ -1079,19 +1079,22 @@
     return capitalizeFirst(raw);
   }
 
-  function formatCalendarExpenseAmount(amount) {
+  function formatCompactAmountUZS(amount) {
     const value = Math.max(0, Math.round(Number(amount || 0)));
     if (value === 0) return "0";
-    if (value >= 100000) {
-      return String(
-        new Intl.NumberFormat(uiLocale(), {
-          notation: "compact",
-          compactDisplay: "short",
-          maximumFractionDigits: value >= 1000000 ? 1 : 0,
-        }).format(value)
-      ).replace(/\s+/g, " ");
-    }
-    return new Intl.NumberFormat(uiLocale()).format(value);
+    if (value < 1000) return String(value);
+
+    const units = [
+      { threshold: 1000000000, suffix: "B" },
+      { threshold: 1000000, suffix: "M" },
+      { threshold: 1000, suffix: "K" },
+    ];
+
+    const unit = units.find((item) => value >= item.threshold) || units[units.length - 1];
+    const scaled = value / unit.threshold;
+    const decimals = scaled >= 100 ? 0 : 1;
+    const text = scaled.toFixed(decimals).replace(/\.0$/, "");
+    return `${text}${unit.suffix}`;
   }
 
   function analyticsCalendarAvailableScopeOptions() {
@@ -1230,9 +1233,11 @@
 
   function analyticsCalendarBuildCells(monthDate, dailyExpenseTotals) {
     const firstDay = startOfMonth(monthDate);
+    const monthEnd = endOfMonth(monthDate);
+    const daysInMonth = monthEnd.getDate();
     const firstDayWeekday = firstDay.getDay();
     const leadingDays = firstDayWeekday === 0 ? 6 : firstDayWeekday - 1;
-    const gridStart = addDays(firstDay, -leadingDays);
+    const totalCells = Math.ceil((leadingDays + daysInMonth) / 7) * 7;
     const today = stripTime(new Date());
     const currentWeekStart = startOfWeekMonday(today);
     const currentWeekEnd = addDays(currentWeekStart, 6);
@@ -1240,20 +1245,40 @@
     const suppressSumsForMonth = analyticsCalendarIsFutureMonth(monthDate);
     const cells = [];
 
-    for (let idx = 0; idx < 42; idx += 1) {
-      const date = addDays(gridStart, idx);
+    for (let idx = 0; idx < totalCells; idx += 1) {
+      const isLeading = idx < leadingDays;
+      const dayOffset = idx - leadingDays;
+      const isCurrentMonthCell = dayOffset >= 0 && dayOffset < daysInMonth;
+      const isTrailingPlaceholder = dayOffset >= daysInMonth;
+
+      if (isTrailingPlaceholder) {
+        cells.push({
+          gridIndex: idx,
+          placeholder: true,
+          outsideType: "trailing",
+          inMonth: false,
+          weekHighlightOn: false,
+        });
+        continue;
+      }
+
+      const date = addDays(firstDay, dayOffset);
       const iso = toDateOnlyIso(date);
-      const inMonth = date.getMonth() === monthDate.getMonth() && date.getFullYear() === monthDate.getFullYear();
+      const inMonth = Boolean(isCurrentMonthCell);
+      const outsideType = inMonth ? "" : "leading";
       const isFuture = compareDateOnly(date, today) > 0;
       const isToday = isSameDateOnly(date, today);
       const inCurrentWeek = compareDateOnly(date, currentWeekStart) >= 0 && compareDateOnly(date, currentWeekEnd) <= 0;
       const showAmount = inMonth && !suppressSumsForMonth && !isFuture;
       const amountValue = showAmount ? Number((dailyExpenseTotals && dailyExpenseTotals[iso]) || 0) : null;
       cells.push({
+        gridIndex: idx,
+        placeholder: false,
         date,
         iso,
         dayNumber: date.getDate(),
         inMonth,
+        outsideType,
         isFuture,
         isToday,
         inCurrentWeek,
@@ -1267,51 +1292,91 @@
   }
 
   function renderAnalyticsCalendarSkeletonGrid() {
-    const cells = Array.from({ length: 42 }, (_, idx) => `
-      <div class="analytics-calendar-cell analytics-calendar-cell-skeleton${idx % 7 >= 5 ? " weekend" : ""}">
-        <span class="analytics-calendar-skeleton-line day"></span>
-        <span class="analytics-calendar-skeleton-line amount"></span>
-      </div>
-    `);
-    return `<div class="analytics-calendar-grid is-skeleton">${cells.join("")}</div>`;
+    const rows = Array.from({ length: 6 }, (_, rowIdx) => {
+      const cells = Array.from({ length: 7 }, (_, colIdx) => `
+        <div class="analytics-calendar-cell analytics-calendar-cell-skeleton${colIdx >= 5 ? " weekend" : ""}">
+          <span class="analytics-calendar-skeleton-line day"></span>
+          <span class="analytics-calendar-skeleton-line amount"></span>
+        </div>
+      `).join("");
+      return `<div class="analytics-calendar-row analytics-calendar-row-skeleton" data-row="${rowIdx + 1}">${cells}</div>`;
+    }).join("");
+    return `<div class="analytics-calendar-grid is-skeleton">${rows}</div>`;
   }
 
   function renderAnalyticsCalendarGrid(monthDate, dailyExpenseTotals) {
     const cells = analyticsCalendarBuildCells(monthDate, dailyExpenseTotals);
-    const html = cells.map((cell, idx) => {
-      const amountValue = Number(cell.amountValue || 0);
-      const canOpen = !cell.isFuture;
-      const cellClasses = [
-        "analytics-calendar-cell",
-        cell.inMonth ? "" : "is-outside",
-        idx % 7 >= 5 ? "weekend" : "",
-        cell.isToday ? "is-today" : "",
-        cell.weekHighlightOn && cell.inCurrentWeek ? "is-current-week" : "",
-        canOpen ? "is-clickable" : "is-disabled",
+    const rows = [];
+
+    for (let rowStart = 0; rowStart < cells.length; rowStart += 7) {
+      const rowCells = cells.slice(rowStart, rowStart + 7);
+      const weekCols = rowCells
+        .map((cell, colIdx) => (
+          cell &&
+          !cell.placeholder &&
+          cell.weekHighlightOn &&
+          cell.inCurrentWeek
+            ? colIdx + 1
+            : 0
+        ))
+        .filter(Boolean);
+      const weekStartCol = weekCols.length ? Math.min(...weekCols) : 0;
+      const weekEndCol = weekCols.length ? Math.max(...weekCols) : 0;
+      const rowClasses = [
+        "analytics-calendar-row",
+        weekCols.length ? "has-current-week" : "",
       ].filter(Boolean).join(" ");
-      const amountClasses = [
-        "analytics-calendar-day-amount",
-        !cell.showAmount ? "is-empty" : "",
-        cell.showAmount && amountValue <= 0 ? "is-zero" : "",
-        cell.showAmount && amountValue > 0 ? "has-value" : "",
-      ].filter(Boolean).join(" ");
-      const amountText = cell.showAmount ? formatCalendarExpenseAmount(amountValue) : "";
-      const ariaLabel = analyticsCalendarDayAriaLabel(cell, amountValue, cell.showAmount);
-      return `
-        <button
-          type="button"
-          class="${cellClasses}"
-          data-calendar-action="open-day"
-          data-date="${cell.iso}"
-          aria-label="${escapeHtml(ariaLabel)}"
-          ${canOpen ? "" : "disabled"}
-        >
-          <span class="analytics-calendar-day-number">${cell.dayNumber}</span>
-          <span class="${amountClasses}">${escapeHtml(amountText)}</span>
-        </button>
-      `;
-    }).join("");
-    return `<div class="analytics-calendar-grid">${html}</div>`;
+      const rowStyle = weekCols.length
+        ? ` style="--week-start-col:${weekStartCol}; --week-end-col:${weekEndCol};"`
+        : "";
+
+      const rowHtml = rowCells.map((cell, colIdx) => {
+        const isWeekend = colIdx >= 5;
+        if (!cell || cell.placeholder) {
+          return `<div class="analytics-calendar-cell analytics-calendar-cell-placeholder${isWeekend ? " weekend" : ""}" aria-hidden="true"></div>`;
+        }
+
+        const amountValue = Number(cell.amountValue || 0);
+        const canOpen = !cell.isFuture;
+        const cellClasses = [
+          "analytics-calendar-cell",
+          cell.inMonth ? "is-in-month" : "is-outside",
+          cell.outsideType === "leading" ? "is-leading-month" : "",
+          isWeekend ? "weekend" : "",
+          cell.isToday ? "is-today" : "",
+          cell.weekHighlightOn && cell.inCurrentWeek ? "is-current-week" : "",
+          canOpen ? "is-clickable" : "is-disabled",
+        ].filter(Boolean).join(" ");
+        const amountClasses = [
+          "analytics-calendar-day-amount",
+          !cell.showAmount ? "is-empty" : "",
+          cell.showAmount && amountValue <= 0 ? "is-zero" : "",
+          cell.showAmount && amountValue > 0 ? "has-value" : "",
+        ].filter(Boolean).join(" ");
+        const amountText = cell.showAmount ? formatCompactAmountUZS(amountValue) : "";
+        const ariaLabel = analyticsCalendarDayAriaLabel(cell, amountValue, cell.showAmount);
+        const titleAttr = cell.showAmount && amountValue > 0 ? ` title="${escapeHtml(fmtMoney(amountValue, false))}"` : "";
+
+        return `
+          <button
+            type="button"
+            class="${cellClasses}"
+            data-calendar-action="open-day"
+            data-date="${cell.iso}"
+            aria-label="${escapeHtml(ariaLabel)}"
+            ${canOpen ? "" : "disabled"}
+            ${titleAttr}
+          >
+            <span class="analytics-calendar-day-number">${cell.dayNumber}</span>
+            <span class="${amountClasses}">${escapeHtml(amountText)}</span>
+          </button>
+        `;
+      }).join("");
+
+      rows.push(`<div class="${rowClasses}"${rowStyle}>${rowHtml}</div>`);
+    }
+
+    return `<div class="analytics-calendar-grid">${rows.join("")}</div>`;
   }
 
   function renderAnalyticsExpensesCalendar() {
@@ -1329,6 +1394,9 @@
     const showSkeleton = Boolean(cal.loading && !cacheEntry && !futureMonth);
     const showError = Boolean(cal.error && !cacheEntry && !futureMonth);
     const scopeOptions = hasFamilyFilter ? analyticsCalendarAvailableScopeOptions() : [];
+    const prevChevronIcon = lucideSvg("chevron-left", { width: 18, height: 18 }) || '<span class="analytics-calendar-nav-icon-fallback" aria-hidden="true">‹</span>';
+    const nextChevronIcon = lucideSvg("chevron-right", { width: 18, height: 18 }) || '<span class="analytics-calendar-nav-icon-fallback" aria-hidden="true">›</span>';
+    const weekToggleIcon = lucideSvg("calendar-range", { width: 14, height: 14 }) || '<span class="analytics-calendar-chip-icon-fallback" aria-hidden="true">◷</span>';
 
     let bodyHtml = "";
     if (showError) {
@@ -1352,16 +1420,13 @@
     els.analyticsExpensesCalendar.innerHTML = `
       <div class="analytics-calendar-toolbar">
         <div class="analytics-calendar-toolbar-row">
-          <div class="analytics-calendar-mode">
-            <button type="button" class="seg-btn active" aria-pressed="true" disabled>${escapeHtml(tr("analytics_calendar_mode_month"))}</button>
-          </div>
           <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
             <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
-              ${lucideSvg("chevron-left", { width: 16, height: 16 })}
+              ${prevChevronIcon}
             </button>
             <div class="analytics-calendar-month-label">${escapeHtml(monthLabel)}</div>
             <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="next-month" aria-label="${escapeHtml(tr("analytics_calendar_next_month"))}">
-              ${lucideSvg("chevron-right", { width: 16, height: 16 })}
+              ${nextChevronIcon}
             </button>
           </div>
         </div>
@@ -1386,7 +1451,7 @@
             </div>
           ` : `<div class="analytics-calendar-toolbar-spacer"></div>`}
           <button type="button" class="analytics-calendar-week-toggle${cal.highlightCurrentWeek ? " active" : ""}" data-calendar-action="toggle-week" aria-pressed="${cal.highlightCurrentWeek ? "true" : "false"}">
-            ${lucideSvg("calendar-range", { width: 14, height: 14 })}
+            ${weekToggleIcon}
             <span>${escapeHtml(tr("analytics_calendar_this_week"))}</span>
           </button>
         </div>
