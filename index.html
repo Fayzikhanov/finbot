@@ -10,7 +10,7 @@
     <div id="app" class="app">
       <header class="topbar">
         <button id="openDatePanelBtn" class="icon-btn" type="button" aria-label="Фильтр даты">
-          <i data-lucide="calendar-days"></i>
+          <i id="topbarLeadingIcon" data-lucide="calendar-days"></i>
         </button>
         <h1 id="screenTitle">Главная</h1>
         <div class="scope-wrap">
@@ -32,34 +32,70 @@
       <div id="statusBanner" class="status-banner hidden"></div>
 
       <main id="homeScreen" class="screen">
-        <section class="summary-stack">
-          <div class="cards-grid">
-            <button id="tabIncome" class="card metric tab-card" data-analytics="income" type="button">
-              <div class="card-head">
+        <section class="summary-stack home-summary-stack">
+          <div class="card metric home-hero-card">
+            <div class="home-hero-tabs" aria-label="Тип аналитики">
+              <button id="tabExpense" class="tab-card home-hero-tab active" data-analytics="expense" type="button">
                 <i data-lucide="arrow-down-left"></i>
-                <div class="card-title">Доходы</div>
-              </div>
-              <div id="incomeValue" class="card-value">0 сум</div>
-            </button>
-            <button id="tabExpense" class="card metric tab-card active" data-analytics="expense" type="button">
-              <div class="card-head">
+                <span class="card-title">Расходы</span>
+              </button>
+              <button id="tabIncome" class="tab-card home-hero-tab" data-analytics="income" type="button">
                 <i data-lucide="arrow-up-right"></i>
-                <div class="card-title">Расходы</div>
-              </div>
-              <div id="expenseValue" class="card-value">0 сум</div>
-            </button>
-          </div>
-
-          <div class="card metric">
-            <div class="card-head">
-              <i data-lucide="repeat-2"></i>
-              <div class="card-title">Семейные переводы</div>
+                <span class="card-title">Доходы</span>
+              </button>
             </div>
-            <div id="familyTransfersValue" class="card-value">0 сум</div>
+
+            <div class="home-hero-main">
+              <div class="home-hero-main-copy">
+                <div id="homeHeroLeadLabel" class="home-hero-lead">Расходы сегодня</div>
+                <div id="homeHeroPrimaryValue" class="home-hero-primary">0 сум</div>
+                <div id="homeHeroSourceValues" class="home-hero-source-values hidden" aria-hidden="true">
+                  <span id="expenseValue">0 сум</span>
+                </div>
+              </div>
+              <div id="homeHeroDeltaBadge" class="home-hero-delta hidden">0%</div>
+            </div>
+
+            <div class="home-hero-substats">
+              <div class="home-hero-substat">
+                <div class="card-title">Доходы</div>
+                <div id="incomeValue" class="home-hero-subvalue">0 сум</div>
+              </div>
+              <div class="card home-hero-substat card-like">
+                <div class="card-title">Семейные переводы</div>
+                <div id="familyTransfersValue" class="home-hero-subvalue">0 сум</div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section id="analyticsPanel" class="panel expense-breakdown">
+        <section class="home-quick-section">
+          <div class="panel-head">
+            <h2>Быстрые действия</h2>
+          </div>
+          <div class="home-quick-grid">
+            <button id="quickAddExpenseBtn" class="home-quick-btn" type="button">
+              <span class="home-quick-icon expense">
+                <i data-lucide="arrow-down-left"></i>
+              </span>
+              <span class="home-quick-label">Расход</span>
+            </button>
+            <button id="quickAddIncomeBtn" class="home-quick-btn" type="button">
+              <span class="home-quick-icon income">
+                <i data-lucide="arrow-up-right"></i>
+              </span>
+              <span class="home-quick-label">Доход</span>
+            </button>
+            <button id="quickAddTransferBtn" class="home-quick-btn" type="button">
+              <span class="home-quick-icon transfer">
+                <i data-lucide="arrow-left-right"></i>
+              </span>
+              <span class="home-quick-label">Перевод</span>
+            </button>
+          </div>
+        </section>
+
+        <section id="analyticsPanel" class="panel expense-breakdown home-breakdown-panel">
           <div class="panel-head">
             <h2 id="chartSectionTitle">Разбивка расходов</h2>
           </div>
@@ -77,7 +113,7 @@
           </div>
         </section>
 
-        <section id="recentPanel" class="panel">
+        <section id="recentPanel" class="panel home-recent-panel">
           <div class="panel-head">
             <h2 id="recentSectionTitle">Последние расходы</h2>
             <button id="viewAllBtn" class="link-btn" type="button">Посмотреть все</button>
@@ -87,8 +123,41 @@
       </main>
 
       <main id="transactionsScreen" class="screen hidden">
-        <section class="panel">
-          <div class="panel-head">
+        <section class="transactions-hero">
+          <div class="transactions-stats-grid">
+            <div class="transactions-stat-card expense">
+              <div class="transactions-stat-label">
+                <i data-lucide="trending-down"></i>
+                <span>Расходы</span>
+              </div>
+              <div id="transactionsExpenseTotalValue" class="transactions-stat-value">0</div>
+              <div class="transactions-stat-currency">сум</div>
+            </div>
+            <div class="transactions-stat-card income">
+              <div class="transactions-stat-label">
+                <i data-lucide="trending-up"></i>
+                <span>Доходы</span>
+              </div>
+              <div id="transactionsIncomeTotalValue" class="transactions-stat-value">0</div>
+              <div class="transactions-stat-currency">сум</div>
+            </div>
+          </div>
+
+          <label class="transactions-search">
+            <i data-lucide="search"></i>
+            <input id="transactionsSearchInput" type="search" placeholder="Поиск транзакций..." autocomplete="off" />
+          </label>
+        </section>
+
+        <section id="transactionsFilters" class="transactions-filters" aria-label="Фильтр транзакций">
+          <button class="transactions-filter-btn active" data-tx-filter="all" type="button">Все</button>
+          <button class="transactions-filter-btn" data-tx-filter="expense" type="button">Расходы</button>
+          <button class="transactions-filter-btn" data-tx-filter="income" type="button">Доходы</button>
+          <button class="transactions-filter-btn" data-tx-filter="transfer" type="button">Переводы</button>
+        </section>
+
+        <section class="panel transactions-list-panel">
+          <div class="panel-head transactions-list-head">
             <h2>Транзакции</h2>
           </div>
           <div id="transactionsList" class="tx-list"></div>
@@ -96,17 +165,17 @@
       </main>
 
       <main id="analyticsScreen" class="screen hidden">
-        <section class="panel">
-          <div id="analyticsHero" class="analytics-hero"></div>
-          <div id="analyticsStatus" class="analytics-status"></div>
-          <div id="analyticsForecast" class="analytics-forecast"></div>
-        </section>
-
-        <section class="panel">
+        <section class="panel analytics-calendar-panel">
           <div class="panel-head">
             <h2 id="analyticsExpensesCalendarTitle">Календарь расходов</h2>
           </div>
           <div id="analyticsExpensesCalendar" class="analytics-expenses-calendar"></div>
+        </section>
+
+        <section class="panel analytics-summary-panel">
+          <div id="analyticsHero" class="analytics-hero"></div>
+          <div id="analyticsStatus" class="analytics-status"></div>
+          <div id="analyticsForecast" class="analytics-forecast"></div>
         </section>
 
         <section class="panel">
@@ -205,14 +274,34 @@
       </main>
 
       <main id="profileScreen" class="screen hidden">
-        <section class="panel profile-hero">
-          <div class="profile-avatar-wrap" aria-hidden="true">
-            <img id="profileAvatarImg" class="profile-avatar-img hidden" alt="" />
-            <div id="profileAvatarFallback" class="profile-avatar-fallback">?</div>
+        <section class="panel profile-hero profile-hero-panel">
+          <button id="profileHeroInfoBtn" class="profile-hero-link" type="button">
+            <div class="profile-avatar-wrap" aria-hidden="true">
+              <img id="profileAvatarImg" class="profile-avatar-img hidden" alt="" />
+              <div id="profileAvatarFallback" class="profile-avatar-fallback">?</div>
+            </div>
+            <div class="profile-hero-text">
+              <div id="profileDisplayName" class="profile-name">Пользователь</div>
+              <div id="profileSubtitle" class="profile-subtitle">Данные Telegram</div>
+            </div>
+            <span class="profile-hero-chevron">
+              <i data-lucide="chevron-right"></i>
+            </span>
+          </button>
+        </section>
+
+        <section class="profile-stats-strip" aria-label="Статистика профиля">
+          <div class="profile-stat-card purple">
+            <div id="profileStatTransactions" class="profile-stat-value">0</div>
+            <div class="profile-stat-label">Транзакций</div>
           </div>
-          <div class="profile-hero-text">
-            <div id="profileDisplayName" class="profile-name">Пользователь</div>
-            <div id="profileSubtitle" class="profile-subtitle">Данные Telegram</div>
+          <div class="profile-stat-card blue">
+            <div id="profileStatCategories" class="profile-stat-value">0</div>
+            <div class="profile-stat-label">Категорий</div>
+          </div>
+          <div class="profile-stat-card green">
+            <div id="profileStatDays" class="profile-stat-value">0</div>
+            <div class="profile-stat-label">Дней</div>
           </div>
         </section>
 
@@ -220,7 +309,7 @@
           <div class="profile-menu-list">
             <button id="profileInfoBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
-                <i data-lucide="badge-info"></i>
+                <i data-lucide="credit-card"></i>
               </span>
               <span class="profile-row-copy">
                 <span class="profile-row-title">Личная информация</span>
@@ -231,7 +320,7 @@
 
             <button id="profileSettingsBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
-                <i data-lucide="settings-2"></i>
+                <i data-lucide="settings"></i>
               </span>
               <span class="profile-row-copy">
                 <span class="profile-row-title">Настройки</span>
@@ -242,7 +331,7 @@
 
             <button id="profileSupportBtn" class="profile-row-btn profile-row-btn-plain" type="button">
               <span class="profile-row-icon">
-                <i data-lucide="life-buoy"></i>
+                <i data-lucide="help-circle"></i>
               </span>
               <span class="profile-row-copy">
                 <span class="profile-row-title">Поддержка</span>
@@ -471,11 +560,11 @@
           <span class="txt">Главная</span>
         </button>
         <button id="navTransactions" class="nav-btn" type="button">
-          <i data-lucide="list"></i>
+          <i data-lucide="receipt"></i>
           <span class="txt">Транзакции</span>
         </button>
         <button id="navConverter" class="nav-btn" type="button">
-          <i data-lucide="chart-no-axes-column"></i>
+          <i data-lucide="bar-chart-3"></i>
           <span class="txt">Аналитика</span>
         </button>
         <button id="navProfile" class="nav-btn" type="button">
