@@ -933,9 +933,17 @@
     return new Intl.NumberFormat(uiLocale()).format(Math.abs(Number(amount || 0)));
   }
 
+  function isTransferCategory(item) {
+    if (!item || typeof item !== "object") return false;
+    const category = String(item.category || "").toLowerCase();
+    return category === "transfer_internal_out" || category === "transfer_internal_in" || category.startsWith("transfer_internal_");
+  }
+
   function txKindKey(item) {
     if (!item || typeof item !== "object") return "expense";
-    if (item.is_transfer === true || String(item.type || "").toLowerCase() === "transfer") return "transfer";
+    if (item.is_transfer === true || String(item.type || "").toLowerCase() === "transfer" || isTransferCategory(item)) {
+      return "transfer";
+    }
     const kind = String(item.kind || "").toLowerCase();
     if (kind === "income" || kind === "expense" || kind === "transfer") return kind;
     return "expense";
@@ -2025,6 +2033,7 @@
   }
 
   function buildApiParams(overrides) {
+    const rawOverrides = overrides && typeof overrides === "object" ? overrides : {};
     const opts = Object.assign(
       {
         chatId: effectiveChatId(),
@@ -2033,7 +2042,7 @@
         start: state.start,
         end: state.end,
       },
-      overrides || {}
+      rawOverrides
     );
 
     const params = new URLSearchParams();
@@ -2044,6 +2053,11 @@
     if (opts.period === "custom" && opts.start && opts.end) {
       params.set("start", String(opts.start));
       params.set("end", String(opts.end));
+    }
+    if (Object.prototype.hasOwnProperty.call(rawOverrides, "include_transfers")) {
+      params.set("include_transfers", rawOverrides.include_transfers ? "1" : "0");
+    } else if (Object.prototype.hasOwnProperty.call(rawOverrides, "includeTransfers")) {
+      params.set("include_transfers", rawOverrides.includeTransfers ? "1" : "0");
     }
     return params.toString();
   }
@@ -3240,11 +3254,17 @@
 
   function openScopeMenu() {
     renderScopeMenu();
+    if (els.appRoot) {
+      els.appRoot.classList.add("scope-menu-open");
+    }
     els.scopeMenu.classList.remove("hidden");
   }
 
   function closeScopeMenu() {
     els.scopeMenu.classList.add("hidden");
+    if (els.appRoot) {
+      els.appRoot.classList.remove("scope-menu-open");
+    }
   }
 
   function openDateSheet() {
@@ -3588,7 +3608,7 @@
   }
 
   function buildBreakdownByType(kind) {
-    const rows = (state.currentTransactions || []).filter((tx) => String(tx.kind || "") === kind);
+    const rows = (state.currentTransactions || []).filter((tx) => txKindKey(tx) === kind);
     const grouped = new Map();
     rows.forEach((row) => {
       const label = String(row.category_label || tr("other")).trim() || tr("other");
@@ -3625,7 +3645,7 @@
     if (kind === "all") {
       return rows.slice(0, limit);
     }
-    return rows.filter((tx) => String(tx.kind || "") === kind).slice(0, limit);
+    return rows.filter((tx) => txKindKey(tx) === kind).slice(0, limit);
   }
 
   function renderRecent(items, kind) {
@@ -3830,12 +3850,12 @@
   function summaryFromCurrentTransactions() {
     const income = Number(
       (state.currentTransactions || [])
-        .filter((x) => String(x.kind || "") === "income")
+        .filter((x) => txKindKey(x) === "income")
         .reduce((acc, x) => acc + Number(x.amount || 0), 0)
     );
     const expense = Number(
       (state.currentTransactions || [])
-        .filter((x) => String(x.kind || "") === "expense")
+        .filter((x) => txKindKey(x) === "expense")
         .reduce((acc, x) => acc + Number(x.amount || 0), 0)
     );
     return { income, expense, balance: income - expense, transfer_total: 0 };
@@ -4432,7 +4452,7 @@
     }
     state.isLoading = true;
     try {
-      const payload = await fetchJsonWithFallback("transactions");
+      const payload = await fetchJsonWithFallback("transactions", { include_transfers: true });
       state.apiUnavailable = false;
       const items = Array.isArray(payload && payload.items) ? payload.items : [];
       state.currentTransactions = items;
