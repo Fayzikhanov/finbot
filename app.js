@@ -977,6 +977,13 @@
     els.homeHeroPrimaryValue.textContent = fmtMoney(mainAmount, false);
 
     if (!els.homeHeroDeltaBadge) return;
+    // Hidden by design in the updated home hero, but keep the node for compatibility.
+    els.homeHeroDeltaBadge.classList.add("hidden");
+    els.homeHeroDeltaBadge.textContent = "";
+    els.homeHeroDeltaBadge.classList.remove("positive", "negative");
+    return;
+
+    /* legacy delta logic (kept intentionally unreachable for easy rollback)
     const compare = state.comparison || null;
     const prevValue = Number(
       mode === "income"
@@ -1000,6 +1007,7 @@
     els.homeHeroDeltaBadge.textContent = fmtSignedPercent(pct);
     els.homeHeroDeltaBadge.classList.toggle("positive", pct > 0);
     els.homeHeroDeltaBadge.classList.toggle("negative", pct < 0);
+    */
   }
 
   function renderTransactionsFilterButtons() {
