@@ -1419,7 +1419,7 @@
 
     els.analyticsExpensesCalendar.innerHTML = `
       <div class="analytics-calendar-toolbar">
-        <div class="analytics-calendar-toolbar-row">
+        <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-main">
           <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
             <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
               ${prevChevronIcon}
@@ -1429,9 +1429,13 @@
               ${nextChevronIcon}
             </button>
           </div>
+          <button type="button" class="analytics-calendar-week-toggle${cal.highlightCurrentWeek ? " active" : ""}" data-calendar-action="toggle-week" aria-pressed="${cal.highlightCurrentWeek ? "true" : "false"}">
+            ${weekToggleIcon}
+            <span>${escapeHtml(tr("analytics_calendar_this_week"))}</span>
+          </button>
         </div>
-        <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary${hasFamilyFilter ? " has-scope" : ""}">
-          ${hasFamilyFilter ? `
+        ${hasFamilyFilter ? `
+          <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary analytics-calendar-toolbar-row-scope">
             <div class="scope-wrap analytics-calendar-scope">
               <button type="button" class="scope-btn analytics-calendar-scope-btn" data-calendar-action="toggle-scope-menu" aria-expanded="${cal.scopeMenuOpen ? "true" : "false"}">
                 ${lucideSvg("users", { width: 14, height: 14 })}
@@ -1449,12 +1453,8 @@
                 `).join("")}
               </div>
             </div>
-          ` : `<div class="analytics-calendar-toolbar-spacer"></div>`}
-          <button type="button" class="analytics-calendar-week-toggle${cal.highlightCurrentWeek ? " active" : ""}" data-calendar-action="toggle-week" aria-pressed="${cal.highlightCurrentWeek ? "true" : "false"}">
-            ${weekToggleIcon}
-            <span>${escapeHtml(tr("analytics_calendar_this_week"))}</span>
-          </button>
-        </div>
+          </div>
+        ` : ""}
       </div>
       <div class="analytics-calendar-body${showSkeleton ? " is-loading" : ""}">
         ${bodyHtml}
