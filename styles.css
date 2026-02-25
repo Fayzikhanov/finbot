@@ -3073,11 +3073,24 @@ body {
   margin-right: var(--figma-page-pad);
 }
 
+.topbar {
+  z-index: 90;
+}
+
+.period-badge {
+  z-index: 60;
+}
+
+.status-banner {
+  z-index: 40;
+}
+
 .screen {
   margin-top: 14px;
   padding-left: var(--figma-page-pad);
   padding-right: var(--figma-page-pad);
   gap: 14px;
+  z-index: 20;
 }
 
 .app.is-add-screen .screen,
@@ -3981,6 +3994,7 @@ body {
 }
 
 .profile-hero-panel {
+  display: block;
   padding: 0;
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -3994,11 +4008,11 @@ body {
   border: 0;
   background: transparent;
   color: #fff;
-  display: grid;
-  grid-template-columns: 1fr;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
   padding: 20px 18px 22px;
   text-align: center;
   min-height: 168px;
@@ -4027,12 +4041,15 @@ body {
   display: grid;
   justify-items: center;
   text-align: center;
+  width: 100%;
 }
 
 .profile-name {
   color: #fff;
   font-size: 20px;
   font-weight: 800;
+  width: 100%;
+  text-align: center;
 }
 
 .profile-subtitle {
@@ -4309,7 +4326,10 @@ body {
   }
 
   .profile-hero-link {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 18px 14px 20px;
     min-height: 154px;
