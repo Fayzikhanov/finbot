@@ -95,6 +95,7 @@
     start: null,
     end: null,
     selectedAnalytics: "expense",
+    overviewSummary: null,
     scopeOptions: [
       { key: "all", label: "Общие расходы" },
       { key: "family", label: "Семейные расходы" },
@@ -105,6 +106,7 @@
     activeCategoryKey: null,
     currentTransactions: [],
     transactionsTypeFilter: "all",
+    transactionsSearchQuery: "",
     comparison: null,
     analyticsPage: {
       initialized: false,
@@ -159,6 +161,7 @@
 
   const els = {
     appRoot: document.getElementById("app"),
+    topbarLeadingIcon: document.getElementById("topbarLeadingIcon"),
     screenTitle: document.getElementById("screenTitle"),
     scopeLabel: document.getElementById("scopeLabel"),
     scopeMenu: document.getElementById("scopeMenu"),
@@ -176,6 +179,12 @@
     tabExpense: document.getElementById("tabExpense"),
     incomeValue: document.getElementById("incomeValue"),
     expenseValue: document.getElementById("expenseValue"),
+    homeHeroLeadLabel: document.getElementById("homeHeroLeadLabel"),
+    homeHeroPrimaryValue: document.getElementById("homeHeroPrimaryValue"),
+    homeHeroDeltaBadge: document.getElementById("homeHeroDeltaBadge"),
+    quickAddExpenseBtn: document.getElementById("quickAddExpenseBtn"),
+    quickAddIncomeBtn: document.getElementById("quickAddIncomeBtn"),
+    quickAddTransferBtn: document.getElementById("quickAddTransferBtn"),
     familyTransfersValue: document.getElementById("familyTransfersValue"),
     analyticsPanel: document.getElementById("analyticsPanel"),
     recentPanel: document.getElementById("recentPanel"),
@@ -189,6 +198,10 @@
     chartLegend: document.getElementById("chartLegend"),
     recentList: document.getElementById("recentList"),
     viewAllBtn: document.getElementById("viewAllBtn"),
+    transactionsFilters: document.getElementById("transactionsFilters"),
+    transactionsSearchInput: document.getElementById("transactionsSearchInput"),
+    transactionsExpenseTotalValue: document.getElementById("transactionsExpenseTotalValue"),
+    transactionsIncomeTotalValue: document.getElementById("transactionsIncomeTotalValue"),
     transactionsList: document.getElementById("transactionsList"),
     homeScreen: document.getElementById("homeScreen"),
     transactionsScreen: document.getElementById("transactionsScreen"),
@@ -220,6 +233,10 @@
     profileAvatarFallback: document.getElementById("profileAvatarFallback"),
     profileDisplayName: document.getElementById("profileDisplayName"),
     profileSubtitle: document.getElementById("profileSubtitle"),
+    profileHeroInfoBtn: document.getElementById("profileHeroInfoBtn"),
+    profileStatTransactions: document.getElementById("profileStatTransactions"),
+    profileStatCategories: document.getElementById("profileStatCategories"),
+    profileStatDays: document.getElementById("profileStatDays"),
     profileInfoBtn: document.getElementById("profileInfoBtn"),
     profileSettingsBtn: document.getElementById("profileSettingsBtn"),
     profileSupportBtn: document.getElementById("profileSupportBtn"),
@@ -912,6 +929,193 @@
     return fmtSignedPercent(Number(value));
   }
 
+  function fmtMoneyNumberOnly(amount) {
+    return new Intl.NumberFormat(uiLocale()).format(Math.abs(Number(amount || 0)));
+  }
+
+  function txKindKey(item) {
+    if (!item || typeof item !== "object") return "expense";
+    if (item.is_transfer === true || String(item.type || "").toLowerCase() === "transfer") return "transfer";
+    const kind = String(item.kind || "").toLowerCase();
+    if (kind === "income" || kind === "expense" || kind === "transfer") return kind;
+    return "expense";
+  }
+
+  function txAmountClassByItem(item) {
+    const kind = txKindKey(item);
+    if (kind === "income") return "income";
+    if (kind === "transfer") return "transfer";
+    return "expense";
+  }
+
+  function txAmountPrefixByItem(item) {
+    const kind = txKindKey(item);
+    if (kind === "income") return "+";
+    if (kind === "transfer") return "↔";
+    return "-";
+  }
+
+  function txCategoryIconForItem(item) {
+    const kind = txKindKey(item);
+    if (kind === "transfer") return "arrow-left-right";
+    return categoryIconName(item && item.category_label, kind);
+  }
+
+  function currentPeriodLeadSuffix() {
+    const lang = currentLanguageCode();
+    if (state.period === "today") return lang === "ru" ? "сегодня" : (lang === "uz" ? "bugun" : "today");
+    return lang === "ru" ? "за период" : (lang === "uz" ? "davr bo'yicha" : "for period");
+  }
+
+  function updateHomeHeroSummary(summary) {
+    if (!els.homeHeroPrimaryValue || !els.homeHeroLeadLabel) return;
+    const safeSummary = summary && typeof summary === "object" ? summary : {};
+    const mode = state.selectedAnalytics === "income" ? "income" : "expense";
+    const mainAmount = Number(mode === "income" ? safeSummary.income || 0 : safeSummary.expense || 0);
+    const baseLabel = mode === "income" ? tr("home_income") : tr("home_expense");
+    els.homeHeroLeadLabel.textContent = `${baseLabel} ${currentPeriodLeadSuffix()}`;
+    els.homeHeroPrimaryValue.textContent = fmtMoney(mainAmount, false);
+
+    if (!els.homeHeroDeltaBadge) return;
+    const compare = state.comparison || null;
+    const prevValue = Number(
+      mode === "income"
+        ? (compare && compare.prevIncome) || 0
+        : (compare && compare.prevExpense) || 0
+    );
+    if (!Number.isFinite(prevValue) || prevValue <= 0) {
+      els.homeHeroDeltaBadge.classList.add("hidden");
+      els.homeHeroDeltaBadge.textContent = "";
+      els.homeHeroDeltaBadge.classList.remove("positive", "negative");
+      return;
+    }
+    const pct = ((mainAmount - prevValue) / prevValue) * 100;
+    if (!Number.isFinite(pct)) {
+      els.homeHeroDeltaBadge.classList.add("hidden");
+      els.homeHeroDeltaBadge.textContent = "";
+      els.homeHeroDeltaBadge.classList.remove("positive", "negative");
+      return;
+    }
+    els.homeHeroDeltaBadge.classList.remove("hidden");
+    els.homeHeroDeltaBadge.textContent = fmtSignedPercent(pct);
+    els.homeHeroDeltaBadge.classList.toggle("positive", pct > 0);
+    els.homeHeroDeltaBadge.classList.toggle("negative", pct < 0);
+  }
+
+  function renderTransactionsFilterButtons() {
+    if (!els.transactionsFilters) return;
+    const current = String(state.transactionsTypeFilter || "all");
+    Array.from(els.transactionsFilters.querySelectorAll("[data-tx-filter]")).forEach((btn) => {
+      btn.classList.toggle("active", String(btn.dataset.txFilter || "") === current);
+    });
+  }
+
+  function updateTransactionsHeaderTotals(items) {
+    if (!els.transactionsExpenseTotalValue && !els.transactionsIncomeTotalValue) return;
+    const rows = Array.isArray(items) ? items : [];
+    let expenseTotal = 0;
+    let incomeTotal = 0;
+    rows.forEach((item) => {
+      const kind = txKindKey(item);
+      const amount = Math.abs(Number(item && item.amount ? item.amount : 0));
+      if (kind === "income") incomeTotal += amount;
+      else if (kind === "expense") expenseTotal += amount;
+    });
+    if (els.transactionsExpenseTotalValue) {
+      els.transactionsExpenseTotalValue.textContent = fmtMoneyNumberOnly(expenseTotal);
+    }
+    if (els.transactionsIncomeTotalValue) {
+      els.transactionsIncomeTotalValue.textContent = fmtMoneyNumberOnly(incomeTotal);
+    }
+  }
+
+  function profileStatsFromCurrentTransactions() {
+    const items = Array.isArray(state.currentTransactions) ? state.currentTransactions : [];
+    const categories = new Set();
+    const days = new Set();
+    items.forEach((item) => {
+      const categoryLabel = String((item && item.category_label) || "").trim();
+      if (categoryLabel) categories.add(categoryLabel.toLowerCase());
+      const iso = String((item && item.created_at_iso) || "").trim();
+      if (iso) {
+        const day = iso.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(day)) days.add(day);
+      }
+    });
+    return {
+      txCount: items.length,
+      categories: categories.size,
+      days: days.size,
+    };
+  }
+
+  function renderProfileStats() {
+    if (!els.profileStatTransactions && !els.profileStatCategories && !els.profileStatDays) return;
+    const stats = profileStatsFromCurrentTransactions();
+    if (els.profileStatTransactions) els.profileStatTransactions.textContent = String(stats.txCount || 0);
+    if (els.profileStatCategories) els.profileStatCategories.textContent = String(stats.categories || 0);
+    if (els.profileStatDays) els.profileStatDays.textContent = String(stats.days || 0);
+  }
+
+  function headerTitleForScreen(name) {
+    const screen = String(name || state.screen || "").trim();
+    if (screen === "transactions") return tr("transactions");
+    if (screen === "analytics") {
+      return currentLanguageCode() === "ru"
+        ? "Расходы"
+        : currentLanguageCode() === "uz"
+          ? "Xarajatlar"
+          : "Expenses";
+    }
+    if (screen === "profile" || screen === "profile-detail") return tr("profile");
+    if (screen === "add") return tr("add_transaction_title");
+    if (screen === "placeholder") return els.placeholderTitle ? String(els.placeholderTitle.textContent || tr("placeholder_soon")) : tr("placeholder_soon");
+    return tr("home");
+  }
+
+  function headerLeadingIconForScreen(name) {
+    const screen = String(name || state.screen || "").trim();
+    if (screen === "home") return "layout-dashboard";
+    if (screen === "transactions") return "receipt";
+    if (screen === "analytics") return "trending-down";
+    if (screen === "profile") return "user";
+    if (screen === "profile-detail") return "chevron-left";
+    if (screen === "add") return "plus";
+    return "calendar-days";
+  }
+
+  function renderScreenChromeVisuals() {
+    if (els.screenTitle) {
+      els.screenTitle.textContent = headerTitleForScreen(state.screen);
+    }
+
+    if (!els.openDatePanelBtn || !els.topbarLeadingIcon) return;
+
+    const iconName = headerLeadingIconForScreen(state.screen);
+    const svg = lucideSvg(iconName, { width: 20, height: 20 }) || lucideSvg("calendar-days", { width: 20, height: 20 });
+    if (svg) {
+      els.openDatePanelBtn.innerHTML = svg;
+    } else {
+      els.openDatePanelBtn.innerHTML = `<i data-lucide="${escapeHtml(iconName)}"></i>`;
+    }
+
+    const isProfile = state.screen === "profile";
+    const isProfileDetail = state.screen === "profile-detail";
+    const isAdd = state.screen === "add";
+    const dateOpensPicker = !(isProfile || isProfileDetail);
+    els.openDatePanelBtn.setAttribute(
+      "aria-label",
+      dateOpensPicker
+        ? (currentLanguageCode() === "ru" ? "Фильтр даты" : currentLanguageCode() === "uz" ? "Sana filtri" : "Date filter")
+        : (currentLanguageCode() === "ru" ? "Раздел" : currentLanguageCode() === "uz" ? "Bo'lim" : "Section")
+    );
+    els.openDatePanelBtn.disabled = Boolean(isAdd);
+
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
   function analyticsPctClass(value, positiveGood) {
     if (value === null || value === undefined || !Number.isFinite(Number(value)) || Number(value) === 0) {
       return "";
@@ -1434,42 +1638,44 @@
           <div class="analytics-calendar-total-value${showTotalLoading ? " is-loading" : ""}">${showTotalLoading ? "" : escapeHtml(monthTotalText)}</div>
         </div>
       </div>
-      <div class="analytics-calendar-toolbar">
-        <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-main">
-          <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
-            <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
-              ${prevChevronIcon}
-            </button>
-            <div class="analytics-calendar-month-label">${escapeHtml(monthNavLabel)}</div>
-            <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="next-month" aria-label="${escapeHtml(tr("analytics_calendar_next_month"))}">
-              ${nextChevronIcon}
-            </button>
-          </div>
-        </div>
-        ${hasFamilyFilter ? `
-          <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary analytics-calendar-toolbar-row-scope">
-            <div class="scope-wrap analytics-calendar-scope">
-              <button type="button" class="scope-btn analytics-calendar-scope-btn" data-calendar-action="toggle-scope-menu" aria-expanded="${cal.scopeMenuOpen ? "true" : "false"}">
-                ${lucideSvg("users", { width: 14, height: 14 })}
-                <span class="analytics-calendar-scope-label">${escapeHtml(scopeLabel)}</span>
-                <span class="chev">${lucideSvg("chevron-down", { width: 14, height: 14 })}</span>
+      <div class="analytics-calendar-surface">
+        <div class="analytics-calendar-toolbar">
+          <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-main">
+            <div class="analytics-calendar-month-nav" role="group" aria-label="${escapeHtml(tr("analytics_calendar_mode_month"))}">
+              <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="prev-month" aria-label="${escapeHtml(tr("analytics_calendar_prev_month"))}">
+                ${prevChevronIcon}
               </button>
-              <div class="scope-menu analytics-calendar-scope-menu${cal.scopeMenuOpen ? "" : " hidden"}">
-                ${scopeOptions.map((item) => `
-                  <button
-                    type="button"
-                    class="scope-option${String(item.key || "") === analyticsCalendarCurrentScopeKey() ? " active" : ""}"
-                    data-calendar-action="select-scope"
-                    data-scope="${escapeHtml(String(item.key || ""))}"
-                  >${escapeHtml(String(item.label || ""))}</button>
-                `).join("")}
-              </div>
+              <div class="analytics-calendar-month-label">${escapeHtml(monthNavLabel)}</div>
+              <button type="button" class="analytics-calendar-nav-btn" data-calendar-action="next-month" aria-label="${escapeHtml(tr("analytics_calendar_next_month"))}">
+                ${nextChevronIcon}
+              </button>
             </div>
           </div>
-        ` : ""}
-      </div>
-      <div class="analytics-calendar-body${showSkeleton ? " is-loading" : ""}">
-        ${bodyHtml}
+          ${hasFamilyFilter ? `
+            <div class="analytics-calendar-toolbar-row analytics-calendar-toolbar-row-secondary analytics-calendar-toolbar-row-scope">
+              <div class="scope-wrap analytics-calendar-scope">
+                <button type="button" class="scope-btn analytics-calendar-scope-btn" data-calendar-action="toggle-scope-menu" aria-expanded="${cal.scopeMenuOpen ? "true" : "false"}">
+                  ${lucideSvg("users", { width: 14, height: 14 })}
+                  <span class="analytics-calendar-scope-label">${escapeHtml(scopeLabel)}</span>
+                  <span class="chev">${lucideSvg("chevron-down", { width: 14, height: 14 })}</span>
+                </button>
+                <div class="scope-menu analytics-calendar-scope-menu${cal.scopeMenuOpen ? "" : " hidden"}">
+                  ${scopeOptions.map((item) => `
+                    <button
+                      type="button"
+                      class="scope-option${String(item.key || "") === analyticsCalendarCurrentScopeKey() ? " active" : ""}"
+                      data-calendar-action="select-scope"
+                      data-scope="${escapeHtml(String(item.key || ""))}"
+                    >${escapeHtml(String(item.label || ""))}</button>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          ` : ""}
+        </div>
+        <div class="analytics-calendar-body${showSkeleton ? " is-loading" : ""}">
+          ${bodyHtml}
+        </div>
       </div>
     `;
   }
@@ -1581,6 +1787,8 @@
     const scopeItem = (state.scopeOptions || []).find((item) => String((item && item.key) || "") === nextScope);
 
     state.transactionsTypeFilter = "expense";
+    state.transactionsSearchQuery = "";
+    if (els.transactionsSearchInput) els.transactionsSearchInput.value = "";
     state.period = "custom";
     state.start = dayIso;
     state.end = dayIso;
@@ -1757,11 +1965,19 @@
       row.type = "button";
       row.className = "legend-item" + (activeKey === item.key ? " active" : "");
       row.innerHTML = `
-        <span class="legend-left">
-          <span class="legend-marker" style="background:${item.color}"></span>
-          <span class="legend-name">${escapeHtml(item.label)}</span>
+        <span class="legend-top">
+          <span class="legend-left">
+            <span class="legend-marker" style="background:${item.color}"></span>
+            <span class="legend-name">${escapeHtml(item.label)}</span>
+          </span>
+          <span class="legend-values">
+            <span class="legend-amount">${fmtMoney(item.amount, false)}</span>
+            <span class="legend-pct">${fmtPercent(item.percent)}%</span>
+          </span>
         </span>
-        <span class="legend-right">${fmtMoney(item.amount, false)} • ${fmtPercent(item.percent)}%</span>
+        <span class="legend-progress" aria-hidden="true">
+          <span class="legend-progress-bar" style="width:${Math.max(0, Math.min(100, Number(item.percent || 0)))}%; background:${item.color}"></span>
+        </span>
       `;
       row.addEventListener("click", () => {
         state.activeCategoryKey = state.activeCategoryKey === item.key ? null : item.key;
@@ -2291,13 +2507,7 @@
       els.scopeLabel.textContent = tr("scope_all");
     }
 
-    if (els.screenTitle) {
-      if (state.screen === "transactions") els.screenTitle.textContent = tr("transactions");
-      else if (state.screen === "analytics") els.screenTitle.textContent = tr("analytics");
-      else if (state.screen === "profile" || state.screen === "profile-detail") els.screenTitle.textContent = tr("profile");
-      else if (state.screen === "add") els.screenTitle.textContent = tr("add_transaction_title");
-      else els.screenTitle.textContent = tr("home");
-    }
+    renderScreenChromeVisuals();
 
     setNodeText(els.tabIncome && els.tabIncome.querySelector(".card-title"), tr("home_income"));
     setNodeText(els.tabExpense && els.tabExpense.querySelector(".card-title"), tr("home_expense"));
@@ -2306,6 +2516,22 @@
       tr("home_transfers")
     );
     setNodeText(els.viewAllBtn, tr("view_all"));
+    setNodeText(
+      document.querySelector(".home-quick-section .panel-head h2"),
+      lang === "ru" ? "Быстрые действия" : (lang === "uz" ? "Tezkor amallar" : "Quick actions")
+    );
+    setNodeText(
+      els.quickAddExpenseBtn && els.quickAddExpenseBtn.querySelector(".home-quick-label"),
+      lang === "ru" ? "Расход" : (lang === "uz" ? "Xarajat" : "Expense")
+    );
+    setNodeText(
+      els.quickAddIncomeBtn && els.quickAddIncomeBtn.querySelector(".home-quick-label"),
+      lang === "ru" ? "Доход" : (lang === "uz" ? "Daromad" : "Income")
+    );
+    setNodeText(
+      els.quickAddTransferBtn && els.quickAddTransferBtn.querySelector(".home-quick-label"),
+      lang === "ru" ? "Перевод" : (lang === "uz" ? "O'tkazma" : "Transfer")
+    );
     setNodeText(els.addModeTransactionBtn, tr("add_mode_transaction"));
     setNodeText(els.addModeTransferBtn, tr("add_mode_transfer"));
     setNodeText(els.addKindExpenseBtn, tr("add_kind_expense"));
@@ -2324,6 +2550,45 @@
     setNodeText(document.querySelector("#homeScreen .panel-head #chartSectionTitle"), tr(state.selectedAnalytics === "income" ? "home_breakdown_income" : "home_breakdown_expense"));
     setNodeText(document.querySelector("#homeScreen .panel-head #recentSectionTitle"), tr(state.selectedAnalytics === "income" ? "home_recent_income" : "home_recent_expenses"));
     setNodeText(els.donutSub, tr("donut_total_period"));
+    setNodePlaceholder(
+      els.transactionsSearchInput,
+      lang === "ru" ? "Поиск транзакций..." : (lang === "uz" ? "Tranzaksiya qidirish..." : "Search transactions...")
+    );
+    setNodeText(
+      document.querySelector(".transactions-stat-card.expense .transactions-stat-label span"),
+      tr("home_expense")
+    );
+    setNodeText(
+      document.querySelector(".transactions-stat-card.income .transactions-stat-label span"),
+      tr("home_income")
+    );
+    document.querySelectorAll(".transactions-stat-currency").forEach((node) => {
+      node.textContent = lang === "ru" ? "сум" : "so'm";
+    });
+    if (els.transactionsFilters) {
+      const txFilterLabels = {
+        all: lang === "ru" ? "Все" : (lang === "uz" ? "Barchasi" : "All"),
+        expense: tr("home_expense"),
+        income: tr("home_income"),
+        transfer: lang === "ru" ? "Переводы" : (lang === "uz" ? "O'tkazmalar" : "Transfers"),
+      };
+      Array.from(els.transactionsFilters.querySelectorAll("[data-tx-filter]")).forEach((btn) => {
+        const key = String(btn.dataset.txFilter || "");
+        if (txFilterLabels[key]) btn.textContent = txFilterLabels[key];
+      });
+    }
+    setNodeText(
+      document.querySelector(".profile-stats-strip .profile-stat-card.purple .profile-stat-label"),
+      lang === "ru" ? "Транзакций" : (lang === "uz" ? "Tranzaksiya" : "Transactions")
+    );
+    setNodeText(
+      document.querySelector(".profile-stats-strip .profile-stat-card.blue .profile-stat-label"),
+      lang === "ru" ? "Категорий" : (lang === "uz" ? "Kategoriya" : "Categories")
+    );
+    setNodeText(
+      document.querySelector(".profile-stats-strip .profile-stat-card.green .profile-stat-label"),
+      lang === "ru" ? "Дней" : (lang === "uz" ? "Kun" : "Days")
+    );
 
     setNodeText(els.profileInfoBtn && els.profileInfoBtn.querySelector(".profile-row-title"), tr("profile_info_title"));
     setNodeText(els.profileSettingsBtn && els.profileSettingsBtn.querySelector(".profile-row-title"), tr("profile_settings_title_row"));
@@ -2395,6 +2660,10 @@
     setNodeText(els.closeCategorySheetBtn, tr("close"));
 
     updatePeriodLabel();
+    updateHomeHeroSummary(state.overviewSummary || summaryFromCurrentTransactions());
+    renderTransactionsFilterButtons();
+    updateTransactionsHeaderTotals(state.currentTransactions || []);
+    renderProfileStats();
     renderAnalyticsExpensesCalendar();
   }
 
@@ -2427,6 +2696,7 @@
     if (!els.profileScreen) return;
     applyUiLanguage();
     renderProfileHeader();
+    renderProfileStats();
     updateProfileSectionMeta();
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
@@ -2870,10 +3140,14 @@
     state.screen = name;
     const isAddScreen = name === "add";
     const isAnalyticsScreen = name === "analytics";
+    const isHomeScreen = name === "home";
+    const isTransactionsScreen = name === "transactions";
     const isProfileScreen = name === "profile";
     const isProfileDetailScreen = name === "profile-detail";
     els.appRoot.classList.toggle("is-add-screen", isAddScreen);
     els.appRoot.classList.toggle("is-analytics-screen", isAnalyticsScreen);
+    els.appRoot.classList.toggle("is-home-screen", isHomeScreen);
+    els.appRoot.classList.toggle("is-transactions-screen", isTransactionsScreen);
     els.appRoot.classList.toggle("is-profile-screen", isProfileScreen);
     els.appRoot.classList.toggle("is-profile-detail-screen", isProfileDetailScreen);
     els.homeScreen.classList.toggle("hidden", name !== "home");
@@ -2897,12 +3171,21 @@
       closeDateSheet();
       setStatusBanner("", "info");
     }
+
+    renderScreenChromeVisuals();
   }
 
   function showPlaceholder(title) {
     els.placeholderTitle.textContent = title;
     state.screen = "placeholder";
-    els.appRoot.classList.remove("is-add-screen", "is-analytics-screen", "is-profile-screen", "is-profile-detail-screen");
+    els.appRoot.classList.remove(
+      "is-home-screen",
+      "is-transactions-screen",
+      "is-add-screen",
+      "is-analytics-screen",
+      "is-profile-screen",
+      "is-profile-detail-screen"
+    );
     els.homeScreen.classList.add("hidden");
     els.transactionsScreen.classList.add("hidden");
     els.analyticsScreen.classList.add("hidden");
@@ -2918,6 +3201,7 @@
     els.navAdd.classList.toggle("active", title === "+");
     els.navConverter.classList.toggle("active", title === tr("analytics"));
     els.navProfile.classList.toggle("active", title === tr("profile"));
+    renderScreenChromeVisuals();
   }
 
   function renderScopeMenu() {
@@ -3365,7 +3649,7 @@
       return;
     }
     items.forEach((item) => {
-      const txKind = String(item.kind || "expense");
+      const txKind = txKindKey(item);
       const title = escapeHtml(
         item.description ||
           item.category_label ||
@@ -3376,12 +3660,12 @@
               : "Transaction")
       );
       const label = escapeHtml(item.category_label || tr("other"));
-      const amountClass = txKind === "income" ? "income" : "expense";
-      const sign = txKind === "income" ? "+" : "-";
+      const amountClass = txAmountClassByItem(item);
+      const sign = txAmountPrefixByItem(item);
       const tx = document.createElement("article");
       tx.className = "tx-item";
       tx.innerHTML = `
-        <div class="tx-icon ${amountClass}">${lucideSvg(categoryIconName(item.category_label, txKind))}</div>
+        <div class="tx-icon ${amountClass}">${lucideSvg(txCategoryIconForItem(item))}</div>
         <div class="tx-main">
           <div class="tx-title">${title}</div>
           <div class="tx-meta">${label} • ${fmtDateTime(item.created_at_iso)}</div>
@@ -3507,6 +3791,7 @@
     state.activeCategoryKey = null;
     els.tabIncome.classList.toggle("active", state.selectedAnalytics === "income");
     els.tabExpense.classList.toggle("active", state.selectedAnalytics === "expense");
+    updateHomeHeroSummary(state.overviewSummary || summaryFromCurrentTransactions());
   }
 
   function renderAnalytics(summary, periodObj) {
@@ -3574,22 +3859,35 @@
     applyOverviewMeta(payload);
 
     const summary = payload && payload.summary ? payload.summary : summaryFromCurrentTransactions();
+    state.overviewSummary = summary;
     els.incomeValue.textContent = fmtMoney(summary.income || 0, false);
     els.expenseValue.textContent = fmtMoney(summary.expense || 0, false);
     if (els.familyTransfersValue) {
       els.familyTransfersValue.textContent = fmtMoney(summary.transfer_total || 0, false);
     }
+    updateHomeHeroSummary(summary);
     renderAnalytics(summary, payload.period || { start: state.start, end: state.end });
     setStatusBanner("", "info");
   }
 
   function renderTransactions(items) {
     els.transactionsList.innerHTML = "";
+    if (els.transactionsSearchInput && els.transactionsSearchInput.value !== String(state.transactionsSearchQuery || "")) {
+      els.transactionsSearchInput.value = String(state.transactionsSearchQuery || "");
+    }
+    updateTransactionsHeaderTotals(items);
+    renderTransactionsFilterButtons();
     const typeFilter = state.transactionsTypeFilter || "all";
+    const searchQuery = String(state.transactionsSearchQuery || "").trim().toLowerCase();
     const isSingleDayPeriod = state.period === "custom" && !!state.start && !!state.end && String(state.start) === String(state.end);
     const filtered = (items || []).filter((item) => {
-      if (typeFilter === "all") return true;
-      return String(item.kind || "") === typeFilter;
+      const kind = txKindKey(item);
+      const matchesFilter = typeFilter === "all" ? true : kind === typeFilter;
+      if (!matchesFilter) return false;
+      if (!searchQuery) return true;
+      const titleText = String(item && item.description ? item.description : "").toLowerCase();
+      const categoryText = String(item && item.category_label ? item.category_label : "").toLowerCase();
+      return titleText.includes(searchQuery) || categoryText.includes(searchQuery);
     });
 
     if (!filtered.length) {
@@ -3600,6 +3898,8 @@
           ? (currentLanguageCode() === "ru" ? "Нет доходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun daromadlar yo'q." : "No income for the selected period.")
           : typeFilter === "expense"
             ? (isSingleDayPeriod ? tr("analytics_calendar_no_day_expenses") : (currentLanguageCode() === "ru" ? "Нет расходов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun xarajatlar yo'q." : "No expenses for the selected period."))
+            : typeFilter === "transfer"
+              ? (currentLanguageCode() === "ru" ? "Нет переводов за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun o'tkazmalar yo'q." : "No transfers for the selected period.")
             : (currentLanguageCode() === "ru" ? "Нет транзакций за выбранный период." : currentLanguageCode() === "uz" ? "Tanlangan davr uchun tranzaksiyalar yo'q." : "No transactions for the selected period.");
       els.transactionsList.appendChild(empty);
       return;
@@ -3607,8 +3907,8 @@
 
     filtered.forEach((item) => {
       const tx = document.createElement("article");
-      const amountCls = item.kind === "income" ? "income" : "expense";
-      const sign = item.kind === "income" ? "+" : "-";
+      const amountCls = txAmountClassByItem(item);
+      const sign = txAmountPrefixByItem(item);
       const title = escapeHtml(
         item.description ||
           item.category_label ||
@@ -3622,7 +3922,7 @@
       tx.className = "tx-item";
       tx.innerHTML = `
         <div class="tx-icon ${amountCls}">${lucideSvg(
-          categoryIconName(item.category_label, item.kind)
+          txCategoryIconForItem(item)
         )}</div>
         <div class="tx-main">
           <div class="tx-title">${title}</div>
@@ -4090,6 +4390,8 @@
           const prevSummary = (prevOverview && prevOverview.summary) || {};
           state.comparison = {
             prevBalance: Number(prevSummary.balance || 0),
+            prevExpense: Number(prevSummary.expense || 0),
+            prevIncome: Number(prevSummary.income || 0),
             label: compareRange.label,
           };
         } catch (comparisonError) {
@@ -4359,6 +4661,25 @@
       renderAnalytics(summaryFromCurrentTransactions(), { start: state.start, end: state.end });
     });
 
+    if (els.quickAddExpenseBtn) {
+      els.quickAddExpenseBtn.addEventListener("click", () => {
+        setAddMode("transaction");
+        openAddScreen("expense");
+      });
+    }
+    if (els.quickAddIncomeBtn) {
+      els.quickAddIncomeBtn.addEventListener("click", () => {
+        setAddMode("transaction");
+        openAddScreen("income");
+      });
+    }
+    if (els.quickAddTransferBtn) {
+      els.quickAddTransferBtn.addEventListener("click", () => {
+        state.addForm.mode = "transfer";
+        openAddScreen();
+      });
+    }
+
     els.addModeTransactionBtn.addEventListener("click", () => setAddMode("transaction"));
     els.addModeTransferBtn.addEventListener("click", () => setAddMode("transfer"));
     els.addKindExpenseBtn.addEventListener("click", () => setAddKind("expense"));
@@ -4467,7 +4788,10 @@
       });
     }
 
-    els.openDatePanelBtn.addEventListener("click", openDateSheet);
+    els.openDatePanelBtn.addEventListener("click", () => {
+      if (state.screen === "profile" || state.screen === "profile-detail" || state.screen === "add") return;
+      openDateSheet();
+    });
     els.periodBadgeBtn.addEventListener("click", openDateSheet);
     els.closeDateSheetBtn.addEventListener("click", closeDateSheet);
     els.dateSheet.addEventListener("click", (e) => {
@@ -4506,9 +4830,29 @@
       } else {
         state.transactionsTypeFilter = "all";
       }
+      state.transactionsSearchQuery = "";
+      if (els.transactionsSearchInput) els.transactionsSearchInput.value = "";
+      renderTransactionsFilterButtons();
       showScreen("transactions");
       await loadTransactions();
     });
+
+    if (els.transactionsSearchInput) {
+      els.transactionsSearchInput.addEventListener("input", () => {
+        state.transactionsSearchQuery = String(els.transactionsSearchInput.value || "");
+        renderTransactions(state.currentTransactions || []);
+      });
+    }
+
+    if (els.transactionsFilters) {
+      Array.from(els.transactionsFilters.querySelectorAll("[data-tx-filter]")).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.transactionsTypeFilter = String(btn.dataset.txFilter || "all");
+          renderTransactionsFilterButtons();
+          renderTransactions(state.currentTransactions || []);
+        });
+      });
+    }
 
     els.navHome.addEventListener("click", async () => {
       els.screenTitle.textContent = tr("home");
@@ -4520,6 +4864,8 @@
     els.navTransactions.addEventListener("click", async () => {
       els.screenTitle.textContent = tr("transactions");
       state.transactionsTypeFilter = "all";
+      state.transactionsSearchQuery = "";
+      if (els.transactionsSearchInput) els.transactionsSearchInput.value = "";
       els.navAdd.classList.remove("hidden");
       showScreen("transactions");
       await loadTransactions();
@@ -4537,6 +4883,12 @@
     els.navProfile.addEventListener("click", async () => {
       await openProfileScreen();
     });
+
+    if (els.profileHeroInfoBtn) {
+      els.profileHeroInfoBtn.addEventListener("click", async () => {
+        await openProfileDetail("info");
+      });
+    }
 
     els.profileInfoBtn.addEventListener("click", async () => {
       await openProfileDetail("info");
