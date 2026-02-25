@@ -23,6 +23,663 @@
   --donut-5: #cfd4e1;
 }
 
+/* Final override (must stay at EOF) */
+
+.app.scope-menu-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 22, 35, 0.14);
+  z-index: 150;
+}
+
+.app.is-home-screen .topbar {
+  isolation: isolate;
+}
+
+.app.is-home-screen .scope-wrap {
+  position: static;
+}
+
+.app.is-home-screen .scope-menu {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 74px);
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: 340px;
+  margin-left: auto;
+  z-index: 220;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(229, 232, 240, 0.96);
+  background: #fff;
+  box-shadow: 0 22px 44px rgba(17, 22, 35, 0.18);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+
+.app.is-home-screen .scope-option {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 14px;
+}
+
+.app.is-home-screen .scope-option + .scope-option {
+  margin-top: 4px;
+}
+
+.app.is-add-screen::before {
+  height: 224px;
+  border-bottom-left-radius: 34px;
+  border-bottom-right-radius: 34px;
+}
+
+.app.is-add-screen .topbar {
+  z-index: 170;
+  margin-left: 16px;
+  margin-right: 16px;
+  align-items: center;
+}
+
+.app.is-add-screen .topbar h1 {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app.is-add-screen .topbar .icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app.is-add-screen .topbar .icon-btn svg {
+  color: #fff;
+}
+
+.app.is-add-screen .topbar .icon-btn:disabled {
+  opacity: 1;
+}
+
+.app.is-add-screen .screen {
+  margin-top: 10px;
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 16px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 44px rgba(35, 40, 62, 0.12);
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(155, 56, 255, 0.12), transparent 60%),
+    radial-gradient(120% 120% at 100% 0%, rgba(77, 73, 255, 0.08), transparent 62%);
+  pointer-events: none;
+}
+
+.app.is-add-screen .add-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app.is-add-screen .add-mode,
+.app.is-add-screen .add-kind {
+  padding: 5px;
+  gap: 6px;
+  border-radius: 18px;
+  border: 1px solid #eceafd;
+  background: linear-gradient(180deg, #f5f4fc 0%, #efeff7 100%);
+}
+
+.app.is-add-screen .add-mode {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
+}
+
+.app.is-add-screen .seg-btn {
+  border-radius: 14px;
+  min-height: 52px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: normal;
+  color: #677088;
+}
+
+.app.is-add-screen .add-mode .seg-btn {
+  min-height: 60px;
+  font-size: 13px;
+}
+
+.app.is-add-screen .seg-btn.active {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    linear-gradient(135deg, #9632ff 0%, #7d31ff 52%, #594bff 100%);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(113, 52, 245, 0.26);
+}
+
+.app.is-add-screen .field {
+  gap: 8px;
+}
+
+.app.is-add-screen .field-label {
+  color: #6d7588;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .field-input,
+.app.is-add-screen .category-pill {
+  min-height: 50px;
+  border-radius: 16px;
+  border: 1px solid #e7e9f1;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: #1f2433;
+}
+
+.app.is-add-screen .field-input {
+  padding: 0 14px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .field-input::placeholder {
+  color: #b0b7c7;
+}
+
+.app.is-add-screen .field-input:focus,
+.app.is-add-screen .field-select:focus {
+  outline: none;
+  border-color: rgba(135, 59, 255, 0.42);
+  box-shadow: 0 0 0 4px rgba(135, 59, 255, 0.1);
+}
+
+.app.is-add-screen .field-input.amount {
+  min-height: 78px;
+  padding: 0 16px;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  border-color: rgba(139, 70, 255, 0.2);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbff 100%);
+}
+
+.app.is-add-screen .category-row {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.app.is-add-screen .category-pill {
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .text-btn {
+  justify-self: start;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: rgba(143, 46, 255, 0.08);
+  color: #6f39ee;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.app.is-add-screen .date-time-grid {
+  gap: 12px;
+}
+
+.app.is-add-screen .save-btn {
+  margin-top: 6px;
+  min-height: 54px;
+  border-radius: 16px;
+  border: 0;
+  background: linear-gradient(135deg, #9835ff 0%, #7b31ff 52%, #4f4aff 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 16px 28px rgba(104, 54, 232, 0.28);
+}
+
+.app.is-add-screen .save-btn svg {
+  color: currentColor;
+}
+
+.app.is-add-screen .save-btn:disabled {
+  background: linear-gradient(180deg, #d9dceb, #cfd4e6);
+  color: #6f778a;
+  box-shadow: none;
+}
+
+.profile-hero-panel {
+  display: block !important;
+}
+
+.profile-hero-panel .profile-hero-link {
+  width: 100%;
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  align-content: center;
+  gap: 12px;
+  text-align: center !important;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.profile-hero-panel .profile-avatar-wrap {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-hero-panel .profile-hero-text {
+  width: min(100%, 280px);
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  gap: 4px;
+  text-align: center !important;
+}
+
+.profile-hero-panel .profile-name {
+  width: 100%;
+  margin: 0;
+  text-align: center !important;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.15;
+}
+
+@media (min-width: 460px) {
+  .app.is-add-screen .category-row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .app.is-home-screen .scope-menu {
+    top: calc(env(safe-area-inset-top) + 70px);
+    left: 14px;
+    right: 14px;
+    max-width: none;
+  }
+
+  .app.is-add-screen .topbar h1 {
+    font-size: 22px;
+  }
+
+  .app.is-add-screen .field-input.amount {
+    font-size: 34px;
+    min-height: 72px;
+  }
+
+  .app.is-add-screen .date-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Final polish fixes: home scope popover, add screen redesign, profile hero centering */
+
+.app.scope-menu-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 22, 35, 0.14);
+  z-index: 150;
+}
+
+.app.is-home-screen .topbar {
+  isolation: isolate;
+}
+
+.app.is-home-screen .scope-wrap {
+  position: static;
+}
+
+.app.is-home-screen .scope-menu {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 74px);
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: 340px;
+  margin-left: auto;
+  z-index: 220;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(229, 232, 240, 0.96);
+  background: #fff;
+  box-shadow: 0 22px 44px rgba(17, 22, 35, 0.18);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+
+.app.is-home-screen .scope-option {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 14px;
+}
+
+.app.is-home-screen .scope-option + .scope-option {
+  margin-top: 4px;
+}
+
+.app.is-add-screen::before {
+  height: 224px;
+  border-bottom-left-radius: 34px;
+  border-bottom-right-radius: 34px;
+}
+
+.app.is-add-screen .topbar {
+  z-index: 170;
+  margin-left: 16px;
+  margin-right: 16px;
+  align-items: center;
+}
+
+.app.is-add-screen .topbar h1 {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app.is-add-screen .topbar .icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app.is-add-screen .topbar .icon-btn svg {
+  color: #fff;
+}
+
+.app.is-add-screen .topbar .icon-btn:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.app.is-add-screen .screen {
+  margin-top: 10px;
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 16px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 44px rgba(35, 40, 62, 0.12);
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(155, 56, 255, 0.12), transparent 60%),
+    radial-gradient(120% 120% at 100% 0%, rgba(77, 73, 255, 0.08), transparent 62%);
+  pointer-events: none;
+}
+
+.app.is-add-screen .add-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app.is-add-screen .add-mode,
+.app.is-add-screen .add-kind {
+  padding: 5px;
+  gap: 6px;
+  border-radius: 18px;
+  border: 1px solid #eceafd;
+  background: linear-gradient(180deg, #f5f4fc 0%, #efeff7 100%);
+}
+
+.app.is-add-screen .add-mode {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
+}
+
+.app.is-add-screen .seg-btn {
+  border-radius: 14px;
+  min-height: 52px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: normal;
+  color: #677088;
+  transition: transform 140ms ease, box-shadow 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.app.is-add-screen .add-mode .seg-btn {
+  min-height: 60px;
+  font-size: 13px;
+}
+
+.app.is-add-screen .seg-btn.active {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    linear-gradient(135deg, #9632ff 0%, #7d31ff 52%, #594bff 100%);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(113, 52, 245, 0.26);
+}
+
+.app.is-add-screen .seg-btn:active {
+  transform: scale(0.99);
+}
+
+.app.is-add-screen .field {
+  gap: 8px;
+}
+
+.app.is-add-screen .field-label {
+  color: #6d7588;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app.is-add-screen .field-input,
+.app.is-add-screen .category-pill {
+  min-height: 50px;
+  border-radius: 16px;
+  border: 1px solid #e7e9f1;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: #1f2433;
+}
+
+.app.is-add-screen .field-input {
+  padding: 0 14px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .field-input::placeholder {
+  color: #b0b7c7;
+}
+
+.app.is-add-screen .field-input:focus,
+.app.is-add-screen .field-select:focus {
+  outline: none;
+  border-color: rgba(135, 59, 255, 0.42);
+  box-shadow: 0 0 0 4px rgba(135, 59, 255, 0.1);
+}
+
+.app.is-add-screen .field-input.amount {
+  min-height: 78px;
+  padding: 0 16px;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  border-color: rgba(139, 70, 255, 0.2);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbff 100%);
+}
+
+.app.is-add-screen .field-select {
+  background-color: #fff;
+}
+
+.app.is-add-screen .category-row {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.app.is-add-screen .category-pill {
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .text-btn {
+  justify-self: start;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: rgba(143, 46, 255, 0.08);
+  color: #6f39ee;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.app.is-add-screen .date-time-grid {
+  gap: 12px;
+}
+
+.app.is-add-screen .save-btn {
+  margin-top: 6px;
+  min-height: 54px;
+  border-radius: 16px;
+  border: 0;
+  background: linear-gradient(135deg, #9835ff 0%, #7b31ff 52%, #4f4aff 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 16px 28px rgba(104, 54, 232, 0.28);
+}
+
+.app.is-add-screen .save-btn svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.app.is-add-screen .save-btn:disabled {
+  background: linear-gradient(180deg, #d9dceb, #cfd4e6);
+  color: #6f778a;
+  box-shadow: none;
+}
+
+.profile-hero-panel {
+  display: block !important;
+}
+
+.profile-hero-panel .profile-hero-link {
+  width: 100%;
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  align-content: center;
+  gap: 12px;
+  text-align: center !important;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.profile-hero-panel .profile-avatar-wrap {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-hero-panel .profile-hero-text {
+  width: min(100%, 280px);
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  gap: 4px;
+  text-align: center !important;
+}
+
+.profile-hero-panel .profile-name {
+  width: 100%;
+  margin: 0;
+  text-align: center !important;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.15;
+}
+
+@media (min-width: 460px) {
+  .app.is-add-screen .category-row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .app.is-home-screen .scope-menu {
+    top: calc(env(safe-area-inset-top) + 70px);
+    left: 14px;
+    right: 14px;
+    max-width: none;
+  }
+
+  .app.is-add-screen .topbar h1 {
+    font-size: 22px;
+  }
+
+  .app.is-add-screen .field-input.amount {
+    font-size: 34px;
+    min-height: 72px;
+  }
+
+  .app.is-add-screen .date-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -4357,5 +5014,326 @@ body {
 
   .profile-row-title {
     font-size: 15px;
+  }
+}
+
+/* EOF final override: scope popover, add screen, profile hero */
+.app.scope-menu-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 22, 35, 0.14);
+  z-index: 150;
+}
+
+.app.is-home-screen .topbar {
+  isolation: isolate;
+}
+
+.app.is-home-screen .scope-wrap {
+  position: static;
+}
+
+.app.is-home-screen .scope-menu {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 74px);
+  left: 16px;
+  right: 16px;
+  width: auto;
+  max-width: 340px;
+  margin-left: auto;
+  z-index: 220;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(229, 232, 240, 0.96);
+  background: #fff;
+  box-shadow: 0 22px 44px rgba(17, 22, 35, 0.18);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+
+.app.is-home-screen .scope-option {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 14px;
+}
+
+.app.is-home-screen .scope-option + .scope-option {
+  margin-top: 4px;
+}
+
+.app.is-add-screen::before {
+  height: 224px;
+  border-bottom-left-radius: 34px;
+  border-bottom-right-radius: 34px;
+}
+
+.app.is-add-screen .topbar {
+  z-index: 170;
+  margin-left: 16px;
+  margin-right: 16px;
+  align-items: center;
+}
+
+.app.is-add-screen .topbar h1 {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app.is-add-screen .topbar .icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app.is-add-screen .topbar .icon-btn svg {
+  color: #fff;
+}
+
+.app.is-add-screen .topbar .icon-btn:disabled {
+  opacity: 1;
+}
+
+.app.is-add-screen .screen {
+  margin-top: 10px;
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 16px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 44px rgba(35, 40, 62, 0.12);
+  gap: 14px;
+}
+
+.app.is-add-screen .add-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(155, 56, 255, 0.12), transparent 60%),
+    radial-gradient(120% 120% at 100% 0%, rgba(77, 73, 255, 0.08), transparent 62%);
+  pointer-events: none;
+}
+
+.app.is-add-screen .add-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app.is-add-screen .add-mode,
+.app.is-add-screen .add-kind {
+  padding: 5px;
+  gap: 6px;
+  border-radius: 18px;
+  border: 1px solid #eceafd;
+  background: linear-gradient(180deg, #f5f4fc 0%, #efeff7 100%);
+}
+
+.app.is-add-screen .add-mode {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
+}
+
+.app.is-add-screen .seg-btn {
+  border-radius: 14px;
+  min-height: 52px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: normal;
+  color: #677088;
+}
+
+.app.is-add-screen .add-mode .seg-btn {
+  min-height: 60px;
+  font-size: 13px;
+}
+
+.app.is-add-screen .seg-btn.active {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    linear-gradient(135deg, #9632ff 0%, #7d31ff 52%, #594bff 100%);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(113, 52, 245, 0.26);
+}
+
+.app.is-add-screen .field {
+  gap: 8px;
+}
+
+.app.is-add-screen .field-label {
+  color: #6d7588;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .field-input,
+.app.is-add-screen .category-pill {
+  min-height: 50px;
+  border-radius: 16px;
+  border: 1px solid #e7e9f1;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: #1f2433;
+}
+
+.app.is-add-screen .field-input {
+  padding: 0 14px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .field-input::placeholder {
+  color: #b0b7c7;
+}
+
+.app.is-add-screen .field-input:focus,
+.app.is-add-screen .field-select:focus {
+  outline: none;
+  border-color: rgba(135, 59, 255, 0.42);
+  box-shadow: 0 0 0 4px rgba(135, 59, 255, 0.1);
+}
+
+.app.is-add-screen .field-input.amount {
+  min-height: 78px;
+  padding: 0 16px;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  border-color: rgba(139, 70, 255, 0.2);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbff 100%);
+}
+
+.app.is-add-screen .category-row {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.app.is-add-screen .category-pill {
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app.is-add-screen .text-btn {
+  justify-self: start;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: rgba(143, 46, 255, 0.08);
+  color: #6f39ee;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.app.is-add-screen .date-time-grid {
+  gap: 12px;
+}
+
+.app.is-add-screen .save-btn {
+  margin-top: 6px;
+  min-height: 54px;
+  border-radius: 16px;
+  border: 0;
+  background: linear-gradient(135deg, #9835ff 0%, #7b31ff 52%, #4f4aff 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 16px 28px rgba(104, 54, 232, 0.28);
+}
+
+.app.is-add-screen .save-btn svg {
+  color: currentColor;
+}
+
+.app.is-add-screen .save-btn:disabled {
+  background: linear-gradient(180deg, #d9dceb, #cfd4e6);
+  color: #6f778a;
+  box-shadow: none;
+}
+
+.profile-hero-panel {
+  display: block !important;
+}
+
+.profile-hero-panel .profile-hero-link {
+  width: 100%;
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  align-content: center;
+  gap: 12px;
+  text-align: center !important;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.profile-hero-panel .profile-avatar-wrap {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-hero-panel .profile-hero-text {
+  width: min(100%, 280px);
+  margin: 0 auto;
+  display: grid !important;
+  justify-items: center !important;
+  gap: 4px;
+  text-align: center !important;
+}
+
+.profile-hero-panel .profile-name {
+  width: 100%;
+  margin: 0;
+  text-align: center !important;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.15;
+}
+
+@media (min-width: 460px) {
+  .app.is-add-screen .category-row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .app.is-home-screen .scope-menu {
+    top: calc(env(safe-area-inset-top) + 70px);
+    left: 14px;
+    right: 14px;
+    max-width: none;
+  }
+
+  .app.is-add-screen .topbar h1 {
+    font-size: 22px;
+  }
+
+  .app.is-add-screen .field-input.amount {
+    font-size: 34px;
+    min-height: 72px;
+  }
+
+  .app.is-add-screen .date-time-grid {
+    grid-template-columns: 1fr;
   }
 }
