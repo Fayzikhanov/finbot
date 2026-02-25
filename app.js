@@ -1157,6 +1157,11 @@
     if (els.screenTitle) {
       els.screenTitle.classList.toggle("home-scope-trigger", isHome);
       if (isHome) {
+        const scopeLabelText = escapeHtml(selectedScopeLabel());
+        els.screenTitle.innerHTML = `
+          <span class="home-scope-text">${scopeLabelText}</span>
+          <span class="home-scope-chevron" aria-hidden="true">${lucideSvg("chevron-down", { width: 16, height: 16 })}</span>
+        `;
         els.screenTitle.setAttribute("role", "button");
         els.screenTitle.setAttribute("tabindex", "0");
         if (els.scopeSheet) {
