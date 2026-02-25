@@ -5337,3 +5337,225 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* EOF override 2: home header scope sheet + hero cleanup */
+.app.is-home-screen .period-badge {
+  display: none !important;
+}
+
+.app.is-home-screen .topbar {
+  grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  gap: 10px;
+  align-items: center;
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger {
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.app.is-home-screen .topbar h1.home-scope-trigger::after {
+  content: "⌄";
+  flex: 0 0 auto;
+  opacity: 0.9;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.app.is-home-screen .topbar .scope-wrap {
+  position: relative;
+  z-index: 95;
+}
+
+.app.is-home-screen .topbar .scope-btn.home-date-trigger {
+  min-height: 44px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: none;
+  padding: 0 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app.is-home-screen .topbar .scope-btn.home-date-trigger > svg:first-child {
+  display: none;
+}
+
+.app.is-home-screen .topbar .scope-btn.home-date-trigger .chev,
+.app.is-home-screen .topbar .scope-btn.home-date-trigger svg {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.app.is-home-screen .topbar .scope-btn.home-date-trigger #scopeLabel {
+  max-width: 140px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.app.is-home-screen #homeHeroIncomeSubstat {
+  display: none;
+}
+
+.app.is-home-screen .home-hero-substats {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.app.is-home-screen .home-hero-substat.card-like.card {
+  width: 100%;
+}
+
+.app.scope-sheet-open {
+  overflow: hidden;
+}
+
+.scope-sheet {
+  z-index: 240;
+  padding: 0;
+  align-items: end;
+  justify-items: stretch;
+  background: rgba(15, 18, 28, 0.34);
+}
+
+.scope-sheet-card {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(228, 231, 240, 0.95);
+  border-bottom: 0;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 28px rgba(24, 29, 45, 0.14);
+  animation: scope-sheet-up 180ms ease-out;
+}
+
+.scope-sheet-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d8dbe5;
+  margin: 2px auto 10px;
+}
+
+.scope-sheet-card h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #22283a;
+  text-align: left;
+}
+
+.scope-sheet-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.scope-sheet-option {
+  width: 100%;
+  border: 1px solid #e6e9f2;
+  background: #fff;
+  color: #1f2433;
+  border-radius: 16px;
+  min-height: 52px;
+  padding: 0 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  box-shadow: 0 2px 10px rgba(26, 31, 48, 0.04);
+}
+
+.scope-sheet-option-label {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.scope-sheet-option-check {
+  width: 18px;
+  height: 18px;
+  color: #8a35ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scope-sheet-option.active {
+  border-color: rgba(140, 52, 255, 0.25);
+  background: linear-gradient(180deg, rgba(146, 55, 255, 0.12), rgba(124, 44, 255, 0.06));
+  color: #6f32ff;
+}
+
+.scope-sheet-empty {
+  border: 1px dashed #dfe3ee;
+  border-radius: 16px;
+  padding: 14px;
+  color: #717a8f;
+  font-weight: 600;
+}
+
+@keyframes scope-sheet-up {
+  from {
+    transform: translateY(18px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .app.is-home-screen .topbar h1.home-scope-trigger {
+    font-size: 15px;
+    padding: 0 12px;
+  }
+
+  .app.is-home-screen .topbar .scope-btn.home-date-trigger {
+    padding: 0 10px;
+  }
+
+  .app.is-home-screen .topbar .scope-btn.home-date-trigger #scopeLabel {
+    max-width: 112px;
+    font-size: 12px;
+  }
+
+  .scope-sheet-card {
+    border-radius: 20px 20px 0 0;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .scope-sheet-option {
+    min-height: 50px;
+    border-radius: 14px;
+    padding: 0 12px;
+  }
+}
+
+/* EOF override 3: keep home leading icon visible when disabled */
+.app.is-home-screen .topbar .icon-btn:disabled {
+  opacity: 1;
+}
