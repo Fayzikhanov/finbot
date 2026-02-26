@@ -3964,7 +3964,7 @@
       return String(a.label || "").localeCompare(String(b.label || ""), uiLocale());
     });
 
-    const palette = ["#8c36ff", "#5575ff", "#d64dff", "#37b6ff"];
+    const palette = ["#8c36ff", "#ff8a00", "#d64dff", "#37b6ff"];
     const visibleRows = rows.slice(0, 2).map((row, idx) => ({
       ...row,
       color: palette[idx % palette.length],
@@ -3983,8 +3983,8 @@
     }
 
     const width = 320;
-    const height = 160;
-    const padding = { left: 14, right: 8, top: 8, bottom: 18 };
+    const height = 176;
+    const padding = { left: 14, right: 8, top: 8, bottom: 32 };
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
     const maxY = Math.max(
@@ -4001,6 +4001,18 @@
         return `<line class="trend-grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`;
       })
       .join("");
+    const axisBaseY = padding.top + chartH;
+    const axisTicks = series.labels
+      .map((dateIso, idx) => {
+        const x = xOf(idx);
+        const dayNum = Number(String(dateIso || "").slice(8, 10)) || (idx + 1);
+        const labelY = idx % 2 === 0 ? (height - 18) : (height - 8);
+        return `
+          <line class="trend-axis-tick" x1="${x}" y1="${axisBaseY}" x2="${x}" y2="${axisBaseY + 4}"></line>
+          <text class="trend-axis-label" x="${x}" y="${labelY}" text-anchor="middle">${dayNum}</text>
+        `;
+      })
+      .join("");
 
     const paths = series.rows
       .map((row) => `<path class="trend-line" style="stroke:${row.color}" d="${buildPolylinePath(row.values, xOf, yOf)}"></path>`)
@@ -4015,17 +4027,19 @@
       )
       .join("");
 
+    els.balanceTrendSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     els.balanceTrendSvg.innerHTML = `
       ${grid}
       ${paths}
       ${dots}
+      ${axisTicks}
     `;
     els.balanceTrendLegend.innerHTML = series.rows
       .map((row) => `
         <span class="trend-legend-item trend-legend-item-user">
           <span class="trend-legend-dot" style="background:${row.color}"></span>
           <span class="trend-legend-user-name">${escapeHtml(row.label)}</span>
-          <span class="trend-legend-user-amount">${fmtMoney(row.totalExpense || 0, false)}</span>
+          <span class="trend-legend-user-amount" style="color:${row.color}">${fmtMoney(row.totalExpense || 0, false)}</span>
         </span>
       `)
       .join("");
