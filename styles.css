@@ -4650,6 +4650,357 @@ body {
   border-radius: 22px;
 }
 
+.app.is-analytics-screen .balance-trend-card {
+  margin-top: 6px;
+  border: 1px solid rgba(140, 54, 255, 0.12);
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(140, 54, 255, 0.08), transparent 58%),
+    radial-gradient(120% 100% at 0% 100%, rgba(85, 117, 255, 0.08), transparent 62%),
+    #fff;
+  box-shadow: var(--figma-shadow-card);
+  padding: 12px;
+}
+
+.app.is-analytics-screen #balanceTrendSvg {
+  height: 184px;
+}
+
+.app.is-analytics-screen .trend-grid-line {
+  stroke: rgba(110, 118, 150, 0.14);
+}
+
+.app.is-analytics-screen .trend-line {
+  stroke-width: 3;
+}
+
+.app.is-analytics-screen .trend-dot {
+  stroke-width: 1.8;
+}
+
+.app.is-analytics-screen .trend-legend {
+  margin-top: 8px;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app.is-analytics-screen .trend-legend-item-user {
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #f5f3fb;
+  border: 1px solid rgba(140, 54, 255, 0.06);
+  gap: 6px;
+}
+
+.app.is-analytics-screen .trend-legend-user-name {
+  color: #3a3f50;
+  font-weight: 700;
+}
+
+.app.is-analytics-screen .trend-legend-user-amount {
+  color: #7a44f3;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.app.is-analytics-screen .analytics-delta-grid {
+  margin-top: 12px;
+  gap: 10px;
+}
+
+.app.is-analytics-screen .analytics-delta-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.is-analytics-screen .analytics-delta-card.analytics-member-card {
+  border-radius: 18px;
+  border: 1px solid rgba(140, 54, 255, 0.1);
+  background:
+    radial-gradient(140% 120% at 100% 0%, rgba(140, 54, 255, 0.08), transparent 64%),
+    #fff;
+  box-shadow: var(--figma-shadow-soft);
+  padding: 12px;
+}
+
+.app.is-analytics-screen .analytics-member-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app.is-analytics-screen .analytics-member-card-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.app.is-analytics-screen .analytics-member-card-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #7d2cff;
+  background: rgba(140, 54, 255, 0.12);
+  flex: 0 0 auto;
+}
+
+.app.is-analytics-screen .analytics-member-card-icon.is-secondary {
+  color: #4a63ff;
+  background: rgba(85, 117, 255, 0.12);
+}
+
+.app.is-analytics-screen .analytics-member-card-name {
+  color: #2b3040;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app.is-analytics-screen .analytics-member-card-share {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7a8093;
+  white-space: nowrap;
+}
+
+.app.is-analytics-screen .analytics-member-card .analytics-delta-value {
+  margin-top: 8px;
+  color: #1f2430;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.app.is-analytics-screen .analytics-member-card-meta {
+  margin-top: 6px;
+  color: #7a8093;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.app.is-analytics-screen .analytics-forecast-panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.app.is-analytics-screen .analytics-forecast {
+  margin-top: 0;
+}
+
+.app.is-analytics-screen .analytics-forecast-card.family {
+  border-radius: 24px;
+  border: 1px solid rgba(140, 54, 255, 0.14);
+  background:
+    radial-gradient(110% 130% at 100% 0%, rgba(140, 54, 255, 0.1), transparent 58%),
+    radial-gradient(110% 100% at 0% 100%, rgba(85, 117, 255, 0.08), transparent 64%),
+    #fff;
+  box-shadow: var(--figma-shadow-card);
+  padding: 14px;
+}
+
+.app.is-analytics-screen .analytics-forecast-card.family.warning {
+  border-color: rgba(255, 91, 120, 0.18);
+  background:
+    radial-gradient(100% 120% at 100% 0%, rgba(255, 79, 109, 0.08), transparent 60%),
+    radial-gradient(110% 100% at 0% 100%, rgba(140, 54, 255, 0.06), transparent 64%),
+    #fff;
+}
+
+.app.is-analytics-screen .analytics-forecast-header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.app.is-analytics-screen .analytics-forecast-header-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #8c36ff 0%, #5575ff 100%);
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(110, 69, 233, 0.2);
+}
+
+.app.is-analytics-screen .analytics-forecast-title {
+  color: #6f7688;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app.is-analytics-screen .analytics-forecast-text {
+  margin-top: 4px;
+  color: #232838;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-total {
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(140, 54, 255, 0.1);
+  background: rgba(140, 54, 255, 0.04);
+  padding: 12px;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-label {
+  color: #4b5164;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-chip {
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(140, 54, 255, 0.12);
+  color: #7d2cff;
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-value {
+  margin-top: 6px;
+  color: #221f38;
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app.is-analytics-screen .analytics-forecast-family-meta {
+  margin-top: 4px;
+  color: #7a8093;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.app.is-analytics-screen .analytics-forecast-breakdown {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(140, 54, 255, 0.08);
+  background: #fbfbfe;
+  padding: 10px;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-row.is-secondary {
+  border-color: rgba(85, 117, 255, 0.1);
+  background: #f8faff;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-row.is-tertiary {
+  border-color: rgba(214, 77, 255, 0.1);
+}
+
+.app.is-analytics-screen .analytics-forecast-user-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #7d2cff;
+  background: rgba(140, 54, 255, 0.1);
+}
+
+.app.is-analytics-screen .analytics-forecast-user-icon.is-secondary {
+  color: #4565ff;
+  background: rgba(85, 117, 255, 0.1);
+}
+
+.app.is-analytics-screen .analytics-forecast-user-icon.is-tertiary {
+  color: #c63aff;
+  background: rgba(214, 77, 255, 0.1);
+}
+
+.app.is-analytics-screen .analytics-forecast-user-main {
+  min-width: 0;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-name {
+  color: #2a3042;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-meta {
+  margin-top: 2px;
+  color: #7a8093;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.app.is-analytics-screen .analytics-forecast-user-value {
+  color: #1f2430;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.app.is-analytics-screen .analytics-forecast-note {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app.is-analytics-screen .analytics-forecast-note.positive {
+  color: #1c9b63;
+}
+
+.app.is-analytics-screen .analytics-forecast-note.warning {
+  color: #ef3b56;
+}
+
+.app.is-analytics-screen .analytics-forecast-note.neutral {
+  color: #6f7688;
+}
+
+.app.is-analytics-screen .analytics-forecast-meta {
+  margin-top: 6px;
+  color: #7a8093;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .profile-hero-panel {
   display: block;
   padding: 0;
@@ -4980,6 +5331,31 @@ body {
   .analytics-calendar-cell-skeleton {
     min-height: 54px;
     border-radius: 16px;
+  }
+
+  .app.is-analytics-screen .analytics-forecast-card.family {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .app.is-analytics-screen .analytics-forecast-family-value {
+    font-size: 24px;
+  }
+
+  .app.is-analytics-screen .analytics-forecast-user-row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .app.is-analytics-screen .analytics-forecast-user-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+  }
+
+  .app.is-analytics-screen .analytics-forecast-user-value {
+    font-size: 12px;
   }
 
   .profile-hero-link {
