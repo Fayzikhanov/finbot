@@ -2711,7 +2711,7 @@
     setNodeText(document.querySelector("#placeholderScreen p"), tr("placeholder_text"));
     setNodeText(document.querySelector("#transactionsScreen .panel-head h2"), tr("transactions"));
     setNodeText(els.analyticsExpensesCalendarTitle, tr("analytics_expenses_calendar_title"));
-    setNodeText(els.analyticsTrendTitle, lang === "ru" ? "Динамика расходов и доходов" : (lang === "uz" ? "Xarajat va daromad dinamikasi" : "Expense and income trend"));
+    setNodeText(els.analyticsTrendTitle, lang === "ru" ? "Динамика расходов по пользователям" : (lang === "uz" ? "Foydalanuvchilar bo'yicha xarajatlar dinamikasi" : "Expense trend by users"));
     setNodeText(els.analyticsComparisonTitle, lang === "ru" ? "Сравнение периодов" : (lang === "uz" ? "Davrlarni solishtirish" : "Period comparison"));
     setNodeText(els.analyticsCategoriesTitle, lang === "ru" ? "Категории расходов" : (lang === "uz" ? "Xarajat kategoriyalari" : "Expense categories"));
     setNodeText(els.analyticsFamilyTitle, lang === "ru" ? "Семейная аналитика" : (lang === "uz" ? "Oilaviy analitika" : "Family analytics"));
@@ -3886,10 +3886,97 @@
       .join(" ");
   }
 
-  function renderBalanceTrendChart(items, startIso, endIso) {
+  function analyticsParticipantFallbackName(index) {
+    const lang = currentLanguageCode();
+    if (lang === "uz") return `Ishtirokchi ${Number(index || 0) + 1}`;
+    if (lang === "en") return `User ${Number(index || 0) + 1}`;
+    return `Пользователь ${Number(index || 0) + 1}`;
+  }
+
+  function buildParticipantExpenseTrendSeries(memberBuckets, participantRows, startIso, endIso) {
+    const start = parseDateOnly(startIso);
+    const end = parseDateOnly(endIso);
+    if (!start || !end || start.getTime() > end.getTime()) {
+      return { labels: [], rows: [] };
+    }
+
+    const labels = [];
+    const dayMap = new Map();
+    let cursor = new Date(start);
+    while (cursor.getTime() <= end.getTime()) {
+      const key = toDateOnlyIso(cursor);
+      dayMap.set(key, labels.length);
+      labels.push(key);
+      cursor = addDays(cursor, 1);
+    }
+
+    const rankByUserId = new Map();
+    const rankByName = new Map();
+    (Array.isArray(participantRows) ? participantRows : []).forEach((row, idx) => {
+      const userId = Number((row && row.userId) || 0);
+      if (userId > 0 && !rankByUserId.has(userId)) rankByUserId.set(userId, idx);
+      const nameKey = String((row && row.name) || "").trim().toLowerCase();
+      if (nameKey && !rankByName.has(nameKey)) rankByName.set(nameKey, idx);
+    });
+
+    const shareByUserId = new Map();
+    (Array.isArray(participantRows) ? participantRows : []).forEach((row) => {
+      const userId = Number((row && row.userId) || 0);
+      if (userId > 0) shareByUserId.set(userId, Number((row && row.sharePct) || 0));
+    });
+
+    const rows = (Array.isArray(memberBuckets) ? memberBuckets : []).map((bucket, bucketIdx) => {
+      const items = Array.isArray(bucket && bucket.items) ? bucket.items : [];
+      const values = labels.map(() => 0);
+      let totalExpense = 0;
+
+      items.forEach((row) => {
+        if (String((row && row.kind) || "") !== "expense") return;
+        const dt = parseIsoDateTime(row && row.created_at_iso);
+        const key = toDateOnlyIso(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+        if (!dayMap.has(key)) return;
+        const dayIdx = dayMap.get(key);
+        const amount = Number((row && row.amount) || 0);
+        values[dayIdx] += amount;
+        totalExpense += amount;
+      });
+
+      const userId = Number((bucket && bucket.userId) || 0);
+      const rawName = String((bucket && bucket.name) || "").trim();
+      const nameKey = rawName.toLowerCase();
+      const rank = rankByUserId.has(userId)
+        ? Number(rankByUserId.get(userId))
+        : (nameKey && rankByName.has(nameKey) ? Number(rankByName.get(nameKey)) : Number.MAX_SAFE_INTEGER);
+
+      return {
+        userId,
+        label: rawName || analyticsParticipantFallbackName(bucketIdx),
+        values,
+        totalExpense,
+        sharePct: shareByUserId.has(userId) ? Number(shareByUserId.get(userId)) : 0,
+        rank,
+      };
+    });
+
+    rows.sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      if (a.totalExpense !== b.totalExpense) return b.totalExpense - a.totalExpense;
+      return String(a.label || "").localeCompare(String(b.label || ""), uiLocale());
+    });
+
+    const palette = ["#8c36ff", "#5575ff", "#d64dff", "#37b6ff"];
+    const visibleRows = rows.slice(0, 2).map((row, idx) => ({
+      ...row,
+      color: palette[idx % palette.length],
+    }));
+
+    return { labels, rows: visibleRows };
+  }
+
+  function renderBalanceTrendChart(memberBuckets, participantRows, startIso, endIso) {
     if (!els.balanceTrendSvg || !els.balanceTrendLegend) return;
-    const series = buildTrendSeries(items, startIso, endIso);
-    if (!series.labels.length) {
+    const series = buildParticipantExpenseTrendSeries(memberBuckets, participantRows, startIso, endIso);
+    if (!series.labels.length || !series.rows.length) {
       els.balanceTrendSvg.innerHTML = "";
       els.balanceTrendLegend.innerHTML = "";
       return;
@@ -3900,15 +3987,14 @@
     const padding = { left: 14, right: 8, top: 8, bottom: 18 };
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
-    const maxIncome = Math.max(...series.income, 0);
-    const maxExpense = Math.max(...series.expense, 0);
-    const maxY = Math.max(maxIncome, maxExpense, 1);
+    const maxY = Math.max(
+      1,
+      ...series.rows.reduce((acc, row) => acc.concat(row.values || []), [])
+    );
     const xOf = (idx) =>
       padding.left + (series.labels.length <= 1 ? chartW / 2 : (idx / (series.labels.length - 1)) * chartW);
     const yOf = (val) => padding.top + chartH - (Number(val || 0) / maxY) * chartH;
 
-    const incomePath = buildPolylinePath(series.income, xOf, yOf);
-    const expensePath = buildPolylinePath(series.expense, xOf, yOf);
     const grid = [0, 1, 2, 3]
       .map((step) => {
         const y = padding.top + (chartH / 3) * step;
@@ -3916,30 +4002,33 @@
       })
       .join("");
 
-    const incomeDots = series.income
-      .map(
-        (v, idx) =>
-          `<circle class="trend-dot income" cx="${xOf(idx)}" cy="${yOf(v)}" r="${series.labels.length > 14 ? 1.8 : 2.5}"></circle>`
-      )
+    const paths = series.rows
+      .map((row) => `<path class="trend-line" style="stroke:${row.color}" d="${buildPolylinePath(row.values, xOf, yOf)}"></path>`)
       .join("");
-    const expenseDots = series.expense
-      .map(
-        (v, idx) =>
-          `<circle class="trend-dot expense" cx="${xOf(idx)}" cy="${yOf(v)}" r="${series.labels.length > 14 ? 1.8 : 2.5}"></circle>`
+    const dots = series.rows
+      .map((row) =>
+        (row.values || [])
+          .map((v, idx) => (
+            `<circle class="trend-dot" style="fill:${row.color};" cx="${xOf(idx)}" cy="${yOf(v)}" r="${series.labels.length > 14 ? 1.8 : 2.5}"></circle>`
+          ))
+          .join("")
       )
       .join("");
 
     els.balanceTrendSvg.innerHTML = `
       ${grid}
-      <path class="trend-line income" d="${incomePath}"></path>
-      <path class="trend-line expense" d="${expensePath}"></path>
-      ${incomeDots}
-      ${expenseDots}
+      ${paths}
+      ${dots}
     `;
-    els.balanceTrendLegend.innerHTML = `
-      <span class="trend-legend-item"><span class="trend-legend-dot income"></span>${escapeHtml(tr("home_income"))}</span>
-      <span class="trend-legend-item"><span class="trend-legend-dot expense"></span>${escapeHtml(tr("home_expense"))}</span>
-    `;
+    els.balanceTrendLegend.innerHTML = series.rows
+      .map((row) => `
+        <span class="trend-legend-item trend-legend-item-user">
+          <span class="trend-legend-dot" style="background:${row.color}"></span>
+          <span class="trend-legend-user-name">${escapeHtml(row.label)}</span>
+          <span class="trend-legend-user-amount">${fmtMoney(row.totalExpense || 0, false)}</span>
+        </span>
+      `)
+      .join("");
   }
 
   function setAnalyticsTab(type) {
@@ -4170,41 +4259,142 @@
     `;
   }
 
+  function analyticsForecastParticipantRows(report) {
+    const rows = Array.isArray(report && report.participants && report.participants.rows)
+      ? report.participants.rows
+      : [];
+    const forecast = report && report.forecast ? report.forecast : {};
+    const periodDays = Math.max(1, Number((report && report.period && report.period.daysCount) || 1));
+    const remainingDays = Math.max(0, Number(forecast.remainingDaysInMonth || 0));
+
+    return rows.map((row, idx) => {
+      const currentExpense = Number((row && row.expense) || 0);
+      const additionalProjected = (currentExpense / periodDays) * remainingDays;
+      return {
+        userId: Number((row && row.userId) || 0),
+        name: String((row && row.name) || analyticsParticipantFallbackName(idx)),
+        currentExpense,
+        projectedExpenseToMonthEnd: Math.round(currentExpense + additionalProjected),
+        projectedAdditionalExpense: Math.round(additionalProjected),
+        txCount: Number((row && row.txCount) || 0),
+        sharePct: Number((row && row.sharePct) || 0),
+      };
+    });
+  }
+
   function renderAnalyticsForecast(report) {
     if (!els.analyticsForecast) return;
+    const lang = currentLanguageCode();
     const forecast = report && report.forecast ? report.forecast : null;
     if (!forecast || !forecast.applicable) {
       els.analyticsForecast.innerHTML = "";
       return;
     }
-    if (Number(forecast.avgExpensePerDay || 0) <= 0) {
-      els.analyticsForecast.innerHTML = `
-        <div class="analytics-forecast-card">
-          <div class="analytics-forecast-title">${escapeHtml(currentLanguageCode() === "ru" ? "Прогноз до конца месяца" : currentLanguageCode() === "uz" ? "Oy oxirigacha prognoz" : "Forecast to month end")}</div>
-          <div class="analytics-forecast-text">${escapeHtml(currentLanguageCode() === "ru" ? "Пока недостаточно расходов, чтобы построить прогноз." : currentLanguageCode() === "uz" ? "Prognoz tuzish uchun hozircha xarajatlar yetarli emas." : "Not enough expenses yet to build a forecast.")}</div>
-        </div>
-      `;
-      return;
-    }
-    const remainingDays = Number(forecast.remainingDaysInMonth || 0);
-    const projected = Number(forecast.projectedExpenseToMonthEnd || 0);
+
+    const participantsForecast = analyticsForecastParticipantRows(report);
+    const remainingDays = Math.max(0, Number(forecast.remainingDaysInMonth || 0));
+    const projected = Math.max(0, Math.round(Number(forecast.projectedExpenseToMonthEnd || 0)));
     const income = Number((report && report.totals && report.totals.income) || 0);
-    const forecastWarn = projected > income && projected > 0;
+    const currentFamilyExpense = Number((report && report.totals && report.totals.expense) || 0);
+    const hasExpenseData = currentFamilyExpense > 0 || Number(forecast.avgExpensePerDay || 0) > 0;
+    const forecastWarn = income > 0 && projected > income;
+
+    const titleText = lang === "ru"
+      ? "Прогноз расходов до конца месяца"
+      : (lang === "uz" ? "Oy oxirigacha xarajatlar prognozi" : "Expense forecast to month end");
+    const familyLabel = lang === "ru"
+      ? "Семья (всё)"
+      : (lang === "uz" ? "Oila (hammasi)" : "Family (total)");
+    const currentLabel = lang === "ru"
+      ? "Сейчас"
+      : (lang === "uz" ? "Hozir" : "Current");
+    const projectedLabel = lang === "ru"
+      ? "Прогноз"
+      : (lang === "uz" ? "Prognoz" : "Forecast");
+    const noDataText = lang === "ru"
+      ? "Пока недостаточно расходов, чтобы построить прогноз."
+      : (lang === "uz" ? "Prognoz tuzish uchun hozircha xarajatlar yetarli emas." : "Not enough expenses yet to build a forecast.");
+
+    let summaryText = "";
+    if (hasExpenseData) {
+      summaryText = lang === "ru"
+        ? `Если сохранится текущий темп, расходы семьи составят ~ ${fmtMoney(projected, false)}`
+        : (lang === "uz"
+          ? `Hozirgi sur'at saqlansa, oila xarajatlari ~ ${fmtMoney(projected, false)} bo'ladi`
+          : `If the current pace continues, family expenses will be about ${fmtMoney(projected, false)}`);
+    }
+
+    let noteText = "";
+    let noteTone = "neutral";
+    if (!hasExpenseData) {
+      noteText = "";
+    } else if (income > 0 && forecastWarn) {
+      noteTone = "warning";
+      noteText = lang === "ru"
+        ? "При текущем темпе вы уйдёте в минус"
+        : (lang === "uz" ? "Hozirgi sur'atda balans manfiy bo'ladi" : "At the current pace you may go negative");
+    } else if (income > 0) {
+      noteTone = "positive";
+      noteText = lang === "ru"
+        ? "При текущем темпе семейный бюджет остаётся в плюсе"
+        : (lang === "uz" ? "Hozirgi sur'atda oila byudjeti ijobiy qoladi" : "At the current pace the family budget stays positive");
+    } else {
+      noteTone = "neutral";
+      noteText = lang === "ru"
+        ? "Доходы за период не указаны, показываем только прогноз расходов"
+        : (lang === "uz" ? "Davr daromadi ko'rsatilmagan, faqat xarajat prognozi ko'rsatiladi" : "No income recorded for the period, showing expense forecast only");
+    }
+
+    const paletteClassForIndex = (idx) => (idx === 0 ? "is-primary" : idx === 1 ? "is-secondary" : "is-tertiary");
+    const iconForIndex = (idx) => (idx >= 2 ? "users" : "user");
+
     els.analyticsForecast.innerHTML = `
-      <div class="analytics-forecast-card ${forecastWarn ? "warning" : "positive"}">
-        <div class="analytics-forecast-title">${escapeHtml(currentLanguageCode() === "ru" ? "Прогноз до конца месяца" : currentLanguageCode() === "uz" ? "Oy oxirigacha prognoz" : "Forecast to month end")}</div>
-        <div class="analytics-forecast-text">
-          ${escapeHtml(currentLanguageCode() === "ru" ? "Если сохранится текущий темп, расходы составят ~" : currentLanguageCode() === "uz" ? "Hozirgi sur'at saqlansa, xarajatlar taxminan" : "If the current pace continues, expenses will be about")} ${fmtMoney(projected, false)}
+      <div class="analytics-forecast-card family ${forecastWarn ? "warning" : ""}">
+        <div class="analytics-forecast-header">
+          <div class="analytics-forecast-header-icon">${lucideSvg("sparkles", { width: 16, height: 16 })}</div>
+          <div>
+            <div class="analytics-forecast-title">${escapeHtml(titleText)}</div>
+            ${hasExpenseData ? `<div class="analytics-forecast-text">${escapeHtml(summaryText)}</div>` : `<div class="analytics-forecast-text">${escapeHtml(noDataText)}</div>`}
+          </div>
         </div>
-        <div class="analytics-forecast-note ${forecastWarn ? "warning" : "positive"}">
-          ${forecastWarn
-            ? (currentLanguageCode() === "ru" ? "При текущем темпе вы уйдёте в минус" : currentLanguageCode() === "uz" ? "Hozirgi sur'atda balans manfiy bo'ladi" : "At the current pace you may go negative")
-            : (currentLanguageCode() === "ru" ? "Вы останетесь в плюсе при текущем темпе" : currentLanguageCode() === "uz" ? "Hozirgi sur'atda ijobiy balans saqlanadi" : "You stay positive at the current pace")}
-        </div>
+
+        ${hasExpenseData ? `
+          <div class="analytics-forecast-family-total">
+            <div class="analytics-forecast-family-top">
+              <div class="analytics-forecast-family-label">${escapeHtml(familyLabel)}</div>
+              <div class="analytics-forecast-family-chip">${escapeHtml(projectedLabel)}</div>
+            </div>
+            <div class="analytics-forecast-family-value">${fmtMoney(projected, false)}</div>
+            <div class="analytics-forecast-family-meta">
+              ${escapeHtml(currentLabel)}: ${fmtMoney(currentFamilyExpense, false)}
+            </div>
+          </div>
+        ` : ""}
+
+        ${participantsForecast.length && hasExpenseData ? `
+          <div class="analytics-forecast-breakdown">
+            ${participantsForecast.map((row, idx) => `
+              <div class="analytics-forecast-user-row ${paletteClassForIndex(idx)}">
+                <div class="analytics-forecast-user-icon ${paletteClassForIndex(idx)}">${lucideSvg(iconForIndex(idx), { width: 14, height: 14 })}</div>
+                <div class="analytics-forecast-user-main">
+                  <div class="analytics-forecast-user-name">${escapeHtml(row.name || analyticsParticipantFallbackName(idx))}</div>
+                  <div class="analytics-forecast-user-meta">
+                    ${escapeHtml(currentLabel)}: ${fmtMoney(row.currentExpense || 0, false)}
+                    <span aria-hidden="true">•</span>
+                    ${Math.round(Number(row.sharePct || 0))}%
+                  </div>
+                </div>
+                <div class="analytics-forecast-user-value">${fmtMoney(row.projectedExpenseToMonthEnd || 0, false)}</div>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        ${noteText ? `<div class="analytics-forecast-note ${noteTone}">${escapeHtml(noteText)}</div>` : ""}
         <div class="analytics-forecast-meta">
           ${remainingDays > 0
-            ? (currentLanguageCode() === "ru" ? `Осталось ${remainingDays} дн.` : currentLanguageCode() === "uz" ? `${remainingDays} kun qoldi` : `${remainingDays} days left`)
-            : (currentLanguageCode() === "ru" ? "Сегодня последний день месяца" : currentLanguageCode() === "uz" ? "Bugun oyning oxirgi kuni" : "Today is the last day of the month")}
+            ? (lang === "ru" ? `Осталось ${remainingDays} дн.` : (lang === "uz" ? `${remainingDays} kun qoldi` : `${remainingDays} days left`))
+            : (lang === "ru" ? "Сегодня последний день месяца" : (lang === "uz" ? "Bugun oyning oxirgi kuni" : "Today is the last day of the month"))}
         </div>
       </div>
     `;
@@ -4212,37 +4402,51 @@
 
   function renderAnalyticsTrendChanges(report) {
     if (!els.analyticsTrendChanges) return;
-    const prev = report && report.previousTotals ? report.previousTotals : { expense: 0, income: 0 };
-    const showExpense = Number(prev.expense || 0) > 0;
-    const showIncome = Number(prev.income || 0) > 0;
-    if (!showExpense && !showIncome) {
+    const rows = Array.isArray(report && report.participants && report.participants.rows)
+      ? report.participants.rows.slice(0, 2)
+      : [];
+    if (!rows.length) {
       els.analyticsTrendChanges.innerHTML = "";
       els.analyticsTrendChanges.classList.add("hidden");
       return;
     }
+
+    const lang = currentLanguageCode();
+    const txLabel = (count) => {
+      const n = Number(count || 0);
+      if (lang === "uz") return `${n} tranz.`;
+      if (lang === "en") return `${n} tx`;
+      return `${n} транз.`;
+    };
+    const avgCheckLabel = lang === "ru"
+      ? "Средний чек"
+      : (lang === "uz" ? "O'rtacha chek" : "Average check");
+    const shareLabel = lang === "ru"
+      ? "доля"
+      : (lang === "uz" ? "ulush" : "share");
+    const paletteClassForIndex = (idx) => (idx === 0 ? "is-primary" : "is-secondary");
+
     els.analyticsTrendChanges.classList.remove("hidden");
-    const expenseClass = analyticsPctClass(report && report.trendChange ? report.trendChange.expensePct : 0, false);
-    const incomeClass = analyticsPctClass(report && report.trendChange ? report.trendChange.incomePct : 0, true);
-    const blocks = [];
-    if (showExpense) {
-      blocks.push(`
-        <div class="analytics-delta-card">
-        <div class="analytics-delta-label">${escapeHtml(currentLanguageCode() === "ru" ? "Расходы к прошлому периоду" : currentLanguageCode() === "uz" ? "Xarajatlar oldingi davrga nisbatan" : "Expenses vs previous period")}</div>
-        <div class="analytics-delta-value ${expenseClass}">
-          ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.expensePct : null)}
+    els.analyticsTrendChanges.classList.toggle("single", rows.length === 1);
+    els.analyticsTrendChanges.innerHTML = rows
+      .map((row, idx) => `
+        <div class="analytics-delta-card analytics-member-card ${paletteClassForIndex(idx)}">
+          <div class="analytics-member-card-head">
+            <div class="analytics-member-card-title-wrap">
+              <span class="analytics-member-card-icon ${paletteClassForIndex(idx)}">${lucideSvg("user", { width: 14, height: 14 })}</span>
+              <span class="analytics-delta-label analytics-member-card-name">${escapeHtml(String((row && row.name) || analyticsParticipantFallbackName(idx)))}</span>
+            </div>
+            <span class="analytics-member-card-share">${Math.round(Number((row && row.sharePct) || 0))}% ${escapeHtml(shareLabel)}</span>
+          </div>
+          <div class="analytics-delta-value">${fmtMoney((row && row.expense) || 0, false)}</div>
+          <div class="analytics-member-card-meta">
+            <span>${escapeHtml(txLabel((row && row.txCount) || 0))}</span>
+            <span aria-hidden="true">•</span>
+            <span>${escapeHtml(avgCheckLabel)} ${fmtMoney((row && row.avgCheck) || 0, false)}</span>
+          </div>
         </div>
-      </div>`);
-    }
-    if (showIncome) {
-      blocks.push(`
-        <div class="analytics-delta-card">
-        <div class="analytics-delta-label">${escapeHtml(currentLanguageCode() === "ru" ? "Доходы к прошлому периоду" : currentLanguageCode() === "uz" ? "Daromadlar oldingi davrga nisbatan" : "Income vs previous period")}</div>
-        <div class="analytics-delta-value ${incomeClass}">
-          ${fmtSignedPercentNullable(report && report.trendChange ? report.trendChange.incomePct : null)}
-        </div>
-      </div>`);
-    }
-    els.analyticsTrendChanges.innerHTML = blocks.join("");
+      `)
+      .join("");
   }
 
   function renderAnalyticsComparisonCard(report) {
@@ -4736,7 +4940,12 @@
       state.analyticsPage.report = report;
       state.apiUnavailable = false;
       renderAnalyticsPage(report);
-      renderBalanceTrendChart(currentItems, report.period.start, report.period.end);
+      renderBalanceTrendChart(
+        participantBuckets,
+        report && report.participants ? report.participants.rows : [],
+        report.period.start,
+        report.period.end
+      );
       setStatusBanner("", "info");
     } catch (err) {
       state.apiUnavailable = true;
