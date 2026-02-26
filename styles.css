@@ -4663,7 +4663,7 @@ body {
 }
 
 .app.is-analytics-screen #balanceTrendSvg {
-  height: 184px;
+  height: 198px;
 }
 
 .app.is-analytics-screen .trend-grid-line {
@@ -4676,6 +4676,17 @@ body {
 
 .app.is-analytics-screen .trend-dot {
   stroke-width: 1.8;
+}
+
+.app.is-analytics-screen .trend-axis-tick {
+  stroke: rgba(122, 128, 147, 0.22);
+  stroke-width: 1;
+}
+
+.app.is-analytics-screen .trend-axis-label {
+  fill: #8b91a2;
+  font-size: 7.2px;
+  font-weight: 700;
 }
 
 .app.is-analytics-screen .trend-legend {
@@ -4752,8 +4763,8 @@ body {
 }
 
 .app.is-analytics-screen .analytics-member-card-icon.is-secondary {
-  color: #4a63ff;
-  background: rgba(85, 117, 255, 0.12);
+  color: #f28a00;
+  background: rgba(255, 138, 0, 0.13);
 }
 
 .app.is-analytics-screen .analytics-member-card-name {
@@ -4917,8 +4928,8 @@ body {
 }
 
 .app.is-analytics-screen .analytics-forecast-user-row.is-secondary {
-  border-color: rgba(85, 117, 255, 0.1);
-  background: #f8faff;
+  border-color: rgba(255, 138, 0, 0.14);
+  background: #fff9f1;
 }
 
 .app.is-analytics-screen .analytics-forecast-user-row.is-tertiary {
@@ -4936,8 +4947,8 @@ body {
 }
 
 .app.is-analytics-screen .analytics-forecast-user-icon.is-secondary {
-  color: #4565ff;
-  background: rgba(85, 117, 255, 0.1);
+  color: #f28a00;
+  background: rgba(255, 138, 0, 0.12);
 }
 
 .app.is-analytics-screen .analytics-forecast-user-icon.is-tertiary {
@@ -5336,6 +5347,10 @@ body {
   .app.is-analytics-screen .analytics-forecast-card.family {
     padding: 12px;
     border-radius: 20px;
+  }
+
+  .app.is-analytics-screen #balanceTrendSvg {
+    height: 188px;
   }
 
   .app.is-analytics-screen .analytics-forecast-family-value {
