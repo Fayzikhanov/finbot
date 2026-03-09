@@ -366,6 +366,9 @@
 
     push(apiBaseParam);
     const pathname = (window.location.pathname || "").replace(/\/+$/, "");
+    if (pathname && pathname !== "/" && !pathname.startsWith("/miniapp")) {
+      push(pathname + "/api");
+    }
     if (pathname.startsWith("/miniapp")) {
       push("/miniapp/api");
       push("/api");
