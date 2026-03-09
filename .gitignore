@@ -1,0 +1,17 @@
+.env
+.venv/
+.venv_light/
+.venv_run/
+__pycache__/
+*.pyc
+data/
+.DS_Store
+*.log
+*.pid
+.tmp_figma/
+.tmp_guidelines/
+.tmp_miniapp_only_runner.py
+.vercel/
+bot_info.md
+cloudflared.*
+tunnel.log
